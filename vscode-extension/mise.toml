@@ -1,0 +1,27 @@
+# Inherits node version from parent mise.toml
+[tools]
+node = "24.2.0"
+
+[tasks.install]
+description = "Install all dependencies (ignoring prepare scripts)"
+run = "npm install --ignore-scripts && cd server && npm install --ignore-scripts"
+
+[tasks.compile]
+description = "TypeScript compile"
+run = "npm run compile"
+
+[tasks.package]
+description = "Build VSIX package"
+run = "npm run package"
+
+[tasks.publish-vsce]
+description = "Publish to VS Code Marketplace"
+run = "npx @vscode/vsce publish"
+
+[tasks.publish-ovsx]
+description = "Publish to Open VSX (set OVSX_TOKEN env var)"
+run = "npx ovsx publish code-engine-mcp-1.0.5.vsix -p $OVSX_TOKEN"
+
+[tasks.reinstall]
+description = "Package and install extension locally for testing"
+run = "npm run package && code --install-extension code-engine-mcp-1.0.5.vsix --force"

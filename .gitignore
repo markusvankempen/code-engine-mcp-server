@@ -1,0 +1,21 @@
+node_modules/
+.DS_Store
+
+# Packaged VS Code extension (build locally with npm run package)
+vscode-extension/*.vsix
+
+# Local editor and MCP runtime config
+.vscode/mcp.json
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Keep internal/reference docs local only
+api/
+internal/
+
+# Local MCP publisher tokens
+.mcpregistry_github_token
+.mcpregistry_registry_token

@@ -1,0 +1,15 @@
+{
+  "cline.mcpServers": {
+    "code-engine": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "code-engine-mcp-server@latest"
+      ],
+      "env": {
+        "IBMCLOUD_API_KEY": "YOUR_IBMCLOUD_API_KEY_HERE",
+        "IBMCLOUD_REGION": "us-south"
+      }
+    }
+  }
+}

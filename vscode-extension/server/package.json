@@ -1,0 +1,64 @@
+{
+  "name": "code-engine-mcp-server",
+  "mcpName": "io.github.markusvankempen/code-engine-mcp-server",
+  "version": "1.0.6",
+  "description": "MCP server for IBM Code Engine and Docker/Podman integration",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/markusvankempen/code-engine-mcp-server.git"
+  },
+  "homepage": "https://github.com/markusvankempen/code-engine-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/markusvankempen/code-engine-mcp-server/issues"
+  },
+  "type": "module",
+  "main": "build/index.js",
+  "bin": {
+    "code-engine-mcp-server": "build/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x build/index.js && chmod +x build/simple-client.js && chmod +x build/deploy-tool.js",
+    "dev": "tsx src/index.ts",
+    "client": "tsx simple-client.ts",
+    "deploy": "tsx src/deploy-cli.ts",
+    "start": "node build/simple-client.js",
+    "prepare": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "ibm-cloud",
+    "ibm-code-engine",
+    "code-engine",
+    "docker",
+    "podman",
+    "container",
+    "deployment",
+    "serverless",
+    "ai-tools",
+    "claude",
+    "copilot",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "files": [
+    "build/",
+    "docs/",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "ajv": "^8.17.1",
+    "axios": "^1.7.0",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}

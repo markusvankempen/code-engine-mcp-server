@@ -1,0 +1,14 @@
+{
+  "cline.mcpServers": {
+    "code-engine": {
+      "command": "node",
+      "args": [
+        "/Users/markusvankempen/projects/code-engine/code-engine-mcp-server/build/index.js"
+      ],
+      "env": {
+        "IBMCLOUD_API_KEY": "YOUR_IBMCLOUD_API_KEY_HERE",
+        "IBMCLOUD_REGION": "us-south"
+      }
+    }
+  }
+}

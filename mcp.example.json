@@ -1,0 +1,13 @@
+{
+    "servers": {
+        "code-engine": {
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "code-engine-mcp-server@latest"],
+            "env": {
+                "IBMCLOUD_API_KEY": "your-ibm-cloud-api-key-here",
+                "IBMCLOUD_REGION": "us-south"
+            }
+        }
+    }
+}
