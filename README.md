@@ -9,6 +9,9 @@ It enables AI assistants to build, run, push, and deploy containerized workloads
 [![IBM Cloud](https://img.shields.io/badge/IBM%20Cloud-Code%20Engine-1261FE)](https://cloud.ibm.com/codeengine/overview)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=nodedotjs&logoColor=white)](#prerequisites)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp)
+[![Open VSX](https://img.shields.io/badge/Open%20VSX-Registry-C160EF?logo=eclipseide&logoColor=white)](https://open-vsx.org/extension/markusvankempen/code-engine-mcp)
+[![npm](https://img.shields.io/badge/npm-code--engine--mcp--server-CB3837?logo=npm&logoColor=white)](https://www.npmjs.com/package/code-engine-mcp-server)
 
 ## How It Works
 
@@ -606,6 +609,7 @@ code-engine-mcp-server/
 - ✅ TLS secrets from Let's Encrypt / certbot PEM files (`ce_create_tls_secret_from_pem`)
 - ✅ TLS cert renewal in-place without disrupting domain mappings (`ce_renew_tls_secret_from_pem`)
 - ✅ Update any secret in-place (`ce_update_secret`)
+- ✅ Refresh ICR pull secret with current API key credentials (`ce_refresh_icr_pull_secret`) — fixes `no_revision_ready` failures caused by stale registry credentials without needing the CLI
 - ✅ Wait for app deployment or build run to complete (`ce_wait_for_app_ready`, `ce_wait_for_build_run`)
 - ✅ IAM token info and diagnostics (`iam_get_token_info`)
 - ✅ Create ICR namespaces via REST API (`icr_create_namespace`)
@@ -617,79 +621,188 @@ code-engine-mcp-server/
 
 ## ⚙️ Configuration
 
-### VS Code — IBM Code Engine MCP extension (optional)
+### Getting an IBM Cloud API key
 
-The extension in `vscode-extension/` registers this MCP server with VS Code using the **MCP server definition provider** API (VS Code **1.101+**). You do **not** need a workspace `.vscode/mcp.json` entry for the default flow: the server is started with `npx -y code-engine-mcp-server` and your API key from settings.
+All Code Engine and ICR operations require an IBM Cloud API key. Get one at:
+**[IBM Cloud IAM → API keys](https://cloud.ibm.com/iam/apikeys)** → **Create an IBM Cloud API key**.
 
-1. Install the extension (from a `.vsix` built with `npm run package` inside `vscode-extension/`, or from the Marketplace when published).
-2. Ensure **Node.js** is installed and `npx` is on your `PATH`.
-3. Open **Settings** and search for **IBM Code Engine MCP**, or edit `settings.json` directly:
-   - `codeEngineMcp.apiKey` — your IBM Cloud API key (**required**; until this is set, the extension contributes no MCP server).
-   - `codeEngineMcp.region` — IBM Cloud region (optional, default `us-south`). Passed as `IBMCLOUD_REGION` to the server.
+Store the key somewhere safe (password manager). You will paste it into one of the configuration paths below.
 
-The extension sets `IBMCLOUD_API_KEY` and `IBMCLOUD_REGION` for the spawned process. Use GitHub Copilot and MCP in VS Code as described in the [Copilot documentation](https://code.visualstudio.com/docs/copilot/copilot-chat).
+---
+
+### Path A — VS Code extension (recommended)
+
+The [IBM Code Engine MCP extension](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp) handles everything: server startup, API key storage, and MCP registration — no manual `mcp.json` editing required.
+
+**Install from the Marketplace:**
+
+| IDE / Platform | Install link |
+|---|---|
+| VS Code | [marketplace.visualstudio.com](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp) |
+| Cursor / Theia / Gitpod / Codium | [open-vsx.org](https://open-vsx.org/extension/markusvankempen/code-engine-mcp) |
+| From a local `.vsix` | **Command Palette** → **Extensions: Install from VSIX…** |
+
+**Set your API key (required before any tool works):**
+
+1. Open the **IBM Code Engine MCP** sidebar panel (cloud icon in the Activity Bar)
+2. Paste your IBM Cloud API key and click **Save**  
+   _(The key is stored in VS Code global settings — encrypted by the OS keychain, never in a plaintext file)_
+3. Optionally change the region (default: `us-south`) in the same panel
+4. Click **Configure MCP** — this writes the server entry to the global `mcp.json` and restarts VS Code's MCP server list
+5. Click **Run Diagnostics** to confirm everything is wired up:
+   - ✅ Node.js found on PATH
+   - ✅ API key configured
+   - ✅ MCP server registered
+   - ✅ Tool list discovered
+
+After step 4 you can open GitHub Copilot Chat and immediately ask:
+> *"List all my Code Engine projects"*
+
+> **Tip:** If Copilot can't see the tools after installing, run **Command Palette → Reload Window** once.
 
 More detail: [vscode-extension/README.md](./vscode-extension/README.md).
 
 ---
 
-### 1) GitHub Copilot (VS Code) — `mcp.json` (workspace)
+### Path B — Pure MCP config (no extension)
 
-Copy `mcp.example.json` to `.vscode/mcp.json` in your workspace root:
+Use this path with **any** MCP-capable client: GitHub Copilot without the extension, Cline, Claude Desktop, Cursor, etc.
+
+#### Where to put the API key (choose one approach)
+
+**Option 1 — Shell environment variable (most secure)**
+
+Copy the provided template and fill in your key:
 
 ```bash
-cp mcp.example.json ../.vscode/mcp.json
+cp .env.example .env          # copy template (already in .gitignore)
+# edit .env → set IBMCLOUD_API_KEY=your-key
+source .env                   # load into current shell session
 ```
 
-Then edit `.vscode/mcp.json` and replace the placeholder with your IBM Cloud API key:
+Or add the export permanently to your shell profile so every new terminal has it:
+
+```bash
+# ~/.zshrc or ~/.bash_profile
+export IBMCLOUD_API_KEY="your-ibm-cloud-api-key-here"
+```
+
+See [.env.example](.env.example) for all available variables (`IBMCLOUD_REGION`, `CONTAINER_RUNTIME`, `DEBUG`).
+
+Then reference the variable in the MCP config without embedding the value:
 
 ```json
 {
-    "servers": {
-        "code-engine": {
-            "type": "stdio",
-            "command": "node",
-            "args": [
-                "${workspaceFolder}/code-engine-mcp-server/build/index.js"
-            ],
-            "env": {
-                "IBMCLOUD_API_KEY": "your-ibm-cloud-api-key-here"
-            }
-        }
-    }
-}
-```
-
-Restart the server: **Cmd+Shift+P** -> **"MCP: Restart Server"** -> `code-engine`.
-
-> **Security:** Add `.vscode/mcp.json` to your `.gitignore` to avoid committing your API key.
-
-Get your API key at [IBM Cloud IAM → API keys](https://cloud.ibm.com/iam/apikeys).
-
----
-
-### 2) Cline (VS Code Extension)
-
-1. Open VSCode Settings (Cmd/Ctrl + ,)
-2. Search for "Cline: MCP Settings"
-3. Click "Edit in settings.json"
-4. Add the configuration:
-
-```json
-{
-  "cline.mcpServers": {
+  "servers": {
     "code-engine": {
-      "command": "node",
-      "args": ["/absolute/path/to/code-engine-mcp-server/build/index.js"],
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "code-engine-mcp-server@latest"],
       "env": {
-        "IBMCLOUD_API_KEY": "your-api-key-here"
+        "IBMCLOUD_API_KEY": "${env:IBMCLOUD_API_KEY}",
+        "IBMCLOUD_REGION": "us-south"
       }
     }
   }
 }
 ```
 
-### 3) Claude Desktop
+> `${env:VARIABLE}` is VS Code's input substitution syntax — it reads the value from your shell environment at startup so your API key is never stored in the file.
+
+**Option 2 — VS Code input variable (prompted on connect)**
+
+VS Code can prompt you for the API key when it starts the server — great for shared machines:
+
+```json
+{
+  "inputs": [
+    {
+      "id": "ibmcloud-api-key",
+      "type": "promptString",
+      "description": "IBM Cloud API key",
+      "password": true
+    }
+  ],
+  "servers": {
+    "code-engine": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "code-engine-mcp-server@latest"],
+      "env": {
+        "IBMCLOUD_API_KEY": "${input:ibmcloud-api-key}",
+        "IBMCLOUD_REGION": "us-south"
+      }
+    }
+  }
+}
+```
+
+**Option 3 — Inline value (simplest, least secure)**
+
+Paste the key directly. **Never commit this file to git.**
+
+```json
+{
+  "servers": {
+    "code-engine": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "code-engine-mcp-server@latest"],
+      "env": {
+        "IBMCLOUD_API_KEY": "your-ibm-cloud-api-key-here",
+        "IBMCLOUD_REGION": "us-south"
+      }
+    }
+  }
+}
+```
+
+> **Security:** Add the config file to `.gitignore`. For workspace configs, use `${env:...}` or `${input:...}` instead of inline values.
+
+---
+
+#### 1) GitHub Copilot (VS Code) — workspace `mcp.json`
+
+Create `.vscode/mcp.json` in your workspace root (or copy `mcp.example.json`):
+
+```bash
+cp mcp.example.json .vscode/mcp.json
+echo '.vscode/mcp.json' >> .gitignore
+```
+
+Paste one of the API key options above. Then restart the server:
+**Cmd+Shift+P** → **MCP: Restart Server** → `code-engine`.
+
+Alternatively, use the **global** MCP config at `~/Library/Application Support/Code/User/mcp.json` (macOS) so the server is available in every workspace without a per-project file.
+
+---
+
+#### 2) Cline (VS Code Extension)
+
+1. Open VS Code Settings (`Cmd+,`)
+2. Search for **Cline: MCP Settings** → **Edit in settings.json**
+3. Add:
+
+```json
+{
+  "cline.mcpServers": {
+    "code-engine": {
+      "command": "npx",
+      "args": ["-y", "code-engine-mcp-server@latest"],
+      "env": {
+        "IBMCLOUD_API_KEY": "your-api-key-here",
+        "IBMCLOUD_REGION": "us-south"
+      }
+    }
+  }
+}
+```
+
+> Prefer `${env:IBMCLOUD_API_KEY}` if your shell exports the key, so it never appears in `settings.json`.
+
+---
+
+#### 3) Claude Desktop
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -697,22 +810,29 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "code-engine": {
-      "command": "node",
-      "args": ["/absolute/path/to/code-engine-mcp-server/build/index.js"],
+      "command": "npx",
+      "args": ["-y", "code-engine-mcp-server@latest"],
       "env": {
-        "IBMCLOUD_API_KEY": "your-api-key-here"
+        "IBMCLOUD_API_KEY": "your-api-key-here",
+        "IBMCLOUD_REGION": "us-south"
       }
     }
   }
 }
 ```
 
-## One-Click Install
+> Restart Claude Desktop after saving. The server starts on demand when Claude needs a tool.
 
-Use the published package from npm or browse the MCP Registry listing:
+## Install & Registry Links
 
-- [npm package: code-engine-mcp-server](https://www.npmjs.com/package/code-engine-mcp-server)
-- [MCP Registry entry: io.github.markusvankempen/code-engine-mcp-server](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.markusvankempen%2Fcode-engine-mcp-server)
+| Platform | Link |
+|---|---|
+| **npm** (MCP server package) | [code-engine-mcp-server](https://www.npmjs.com/package/code-engine-mcp-server) |
+| **VS Code Marketplace** (extension) | [MarkusvanKempen.code-engine-mcp](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp) |
+| **Open VSX Registry** (Theia / Gitpod / Cursor) | [markusvankempen.code-engine-mcp](https://open-vsx.org/extension/markusvankempen/code-engine-mcp) |
+| **MCP Registry** | [io.github.markusvankempen/code-engine-mcp-server](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.markusvankempen%2Fcode-engine-mcp-server) |
+
+The **VS Code extension** is the easiest starting point — it handles server startup, API key storage, and MCP registration automatically. Use the **npm package** directly if you prefer a manual MCP config (Cline, Claude Desktop, Cursor, or any other client).
 
 ## 💬 Example Prompts
 
@@ -776,7 +896,7 @@ Tell me what CNAME value to set in DNS.
 
 ## 🛠️ Available Tools
 
-62 tools total: 9 container tools + 4 ICR tools + 45 Code Engine tools + 1 IAM tool + 3 procedures.
+63 tools total: 9 container tools + 4 ICR tools + 46 Code Engine tools + 1 IAM tool + 3 procedures.
 
 > **Procedures** bundle multiple tools into a single call. Use them for common end-to-end workflows.
 
@@ -853,7 +973,7 @@ Tell me what CNAME value to set in DNS.
 | `ce_create_job_run` | Submit a job run | `project_id`, `job_name` |
 | `ce_delete_job_run` | Delete a job run | `project_id`, `job_run_name` |
 
-### Code Engine: Secrets (7)
+### Code Engine: Secrets (8)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
@@ -862,6 +982,7 @@ Tell me what CNAME value to set in DNS.
 | `ce_create_secret` | Create a secret | `project_id`, `name`, `format`, `data` |
 | `ce_update_secret` | Update an existing secret in-place (PATCH) | `project_id`, `secret_name`, `data` |
 | `ce_delete_secret` | Delete a secret | `project_id`, `secret_name` |
+| `ce_refresh_icr_pull_secret` | Delete and recreate an ICR registry pull secret using the server's own API key — fixes stale-credential failures without needing the CLI | `project_id`, `secret_name` (default: `icr-pull-secret`), `icr_host` |
 | `ce_create_tls_secret_from_pem` | Create a TLS secret from PEM files | `project_id`, `secret_name`, `cert_pem_path`, `key_pem_path` |
 | `ce_renew_tls_secret_from_pem` | Renew an existing TLS secret from updated PEM files | `project_id`, `secret_name`, `cert_pem_path`, `key_pem_path` |
 
