@@ -1,6 +1,6 @@
 # IBM Code Engine MCP — VS Code Extension
 
-> **v1.0.5** — Configure MCP button, new sidebar icon, generic AI assistant language, improved docs & discoverability
+> **v1.0.7** — Security hardened: no shell access, input validation on all container commands, `ce_refresh_icr_pull_secret` tool, auto-refresh pull secret in `proc_build_push_deploy`, improved setup docs
 
 Deploy containerised apps to **IBM Code Engine** using natural language. This extension wires up the `code-engine-mcp-server` as an [MCP](https://modelcontextprotocol.io) server so any AI assistant running in your IDE (GitHub Copilot, Cline, Cursor, etc.) can build images, push them to IBM Container Registry, and deploy apps — all from a chat prompt.
 

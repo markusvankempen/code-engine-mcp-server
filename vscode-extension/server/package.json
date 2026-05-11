@@ -1,7 +1,7 @@
 {
   "name": "code-engine-mcp-server",
   "mcpName": "io.github.markusvankempen/code-engine-mcp-server",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "MCP server for IBM Code Engine and Docker/Podman integration",
   "repository": {
     "type": "git",

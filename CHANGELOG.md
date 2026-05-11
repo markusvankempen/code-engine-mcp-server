@@ -7,6 +7,42 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-05-10
+
+### Security
+- **Eliminated shell access** — removed `child_process.exec` entirely. All subprocess invocations now use `execFile` (does not invoke `/bin/sh`) or `spawn` with a stdin pipe for registry login. This closes command injection risk across every container tool when arguments contain shell metacharacters.
+- **Input validation helpers** — added allowlist validators run before every subprocess call:
+  - `validateRuntime` — only `docker` or `podman` accepted
+  - `validateImageName` — `[a-zA-Z0-9._\-/:@]` only (covers digest refs and tags)
+  - `validateContainerId` — alphanumeric/`_.-` only, prevents container ID injection
+  - `validatePortMapping` — enforces `hostPort:containerPort` numeric format
+  - `validateEnvKey` — POSIX identifier rules (`[a-zA-Z_][a-zA-Z0-9_]*`)
+  - `validateRegistryHost` — hostname + optional port only
+- **Registry login** — replaced `echo "${password}" | docker login` (shell string interpolation) with `spawn()` writing the credential directly to process stdin, preventing injection via API key content.
+
+### Added
+- **`ce_refresh_icr_pull_secret`** — refresh an ICR registry pull secret in Code Engine using the current API key, without requiring the `ibmcloud` CLI. Resolves `no_revision_ready` / `reason: unknown` deploy failures caused by stale or expired secrets.
+- **`proc_build_push_deploy` step 4.5** — automatically refreshes the ICR pull secret before the app deploy step, preventing stale-credential failures without any manual intervention.
+- **`.env.example`** — template documenting `IBMCLOUD_API_KEY` and all optional env vars (`IBMCLOUD_REGION`, `CONTAINER_RUNTIME`, `DEBUG`) with usage guidance.
+- **`docs/SETUP_INSTRUCTIONS.md`** — fully rewritten: three API key storage options (shell env var, VS Code input variable, inline), step-by-step setup for five MCP clients (VS Code extension, VS Code manual, Claude Desktop, Cline, Cursor), verification steps and security checklist.
+- **`docs/MCP_INSPECTOR_TROUBLESHOOTING.md`** — new `no_revision_ready` / `reason: unknown` section: Cause A (stale ICR pull secret, fix with `ce_refresh_icr_pull_secret`) and Cause B (Alpine BusyBox `sed` `\s*` vs `[[:space:]]*`).
+- **37 new IBM Code Engine API tools** bringing total coverage to 95 tools:
+  - **App Revisions** (`ce_list_app_revisions`, `ce_get_app_revision`, `ce_delete_app_revision`) — manage deployed revision history
+  - **Update operations** (`ce_update_job`, `ce_update_build`, `ce_update_config_map`, `ce_update_domain_mapping`) — PATCH support for previously create-only resources
+  - **Functions** (`ce_list_function_runtimes`, `ce_list_functions`, `ce_get_function`, `ce_create_function`, `ce_update_function`, `ce_delete_function`) — full CRUD for serverless functions
+  - **Service Bindings** (`ce_list_bindings`, `ce_create_binding`, `ce_get_binding`, `ce_delete_binding`) — connect IBM Cloud services to apps/jobs/functions
+  - **Project extras** (`ce_get_project_status`, `ce_list_egress_ips`) — project readiness and egress IP allowlisting
+  - **Allowed Outbound Destinations** (`ce_list_allowed_outbound_destinations`, `ce_create_allowed_outbound_destination`, `ce_get_allowed_outbound_destination`, `ce_update_allowed_outbound_destination`, `ce_delete_allowed_outbound_destination`) — CIDR/FQDN egress rules
+  - **Persistent Data Stores** (`ce_list_persistent_data_stores`, `ce_create_persistent_data_store`, `ce_get_persistent_data_store`, `ce_delete_persistent_data_store`) — COS bucket bindings
+  - **Fleets** (`ce_list_fleets`, `ce_create_fleet`, `ce_get_fleet`, `ce_delete_fleet`, `ce_cancel_fleet`) — fleet lifecycle management
+  - **Fleet Tasks** (`ce_list_fleet_tasks`, `ce_get_fleet_task`) — inspect tasks within a fleet
+  - **Fleet Workers** (`ce_list_fleet_workers`, `ce_get_fleet_worker`) — inspect workers within a fleet
+  - **Subnet Pools** (`ce_list_subnet_pools`, `ce_create_subnet_pool`, `ce_get_subnet_pool`, `ce_delete_subnet_pool`) — subnet pool management
+
+### Changed
+- **README** — added VS Code Marketplace, Open VSX, and npm registry badges; new "Install & Registry Links" section; API key guidance restructured as Path A (VS Code extension) and Path B (manual MCP config) with three storage options; `ce_refresh_icr_pull_secret` added to features list; tool count updated to 95.
+- **`proc_build_push_deploy` `build_output`** — build and push output now includes combined stdout + stderr from `execFile` (was `exec`); build summary still shows last 20 lines.
+
 ## [1.0.6] - 2026-05-09
 
 ### Added

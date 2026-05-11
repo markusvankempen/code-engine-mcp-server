@@ -1,6 +1,6 @@
 # Star Wars Splash — Quick Start Example
 
-A Star Wars opening-crawl splash page that demonstrates deploying a static container to IBM Code Engine via the MCP server.
+A self-contained Star Wars opening-crawl splash page that demonstrates deploying a static container to IBM Code Engine via the MCP server.
 
 **Live demo:** https://starwars-splash.jqu1wkh2th6.us-south.codeengine.appdomain.cloud
 
@@ -10,14 +10,16 @@ A Star Wars opening-crawl splash page that demonstrates deploying a static conta
 
 | File | Purpose |
 |------|---------|
-| `index.html` | Animated Star Wars crawl with canvas starfield |
-| `Dockerfile` | nginx:alpine, remapped to port 8080 (required by Code Engine) |
+| `index.html` | Animated Star Wars crawl with canvas starfield, rolling credits, and inline synthesized theme toggle |
+| `Dockerfile` | nginx:alpine image for the self-contained app, remapped to port 8080 with a simple health check |
 
 ---
 
 ## 🤖 The Agentic Experience
 
 Deploying this app is as simple as talking to your AI assistant. You do not need to know how to use the Docker CLI or the IBM Cloud CLI.
+
+The example is intentionally packaged as a single HTML artifact, so everything needed for the experience ships from this folder without external media files.
 
 ### Option A: The "One-Shot" Deployment
 
@@ -160,4 +162,4 @@ Code Engine requires containers to listen on **port 8080**. The Dockerfile patch
 Markus van Kempen  
 Email: `markus.van.kempen@gmail.com` | `mvankempen@ca.ibm.com`  
 Website: [markusvankempen.github.io](https://markusvankempen.github.io/)  
-Research | Floor 7 1/2
+Developer

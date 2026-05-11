@@ -10,7 +10,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, } from '@modelcontextprotocol/sdk/types.js';
-import { exec } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
 import axios from 'axios';
 import { config as loadDotenv } from 'dotenv';
@@ -20,7 +20,70 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 loadDotenv({ path: resolve(__dirname, '../../.env') });
 loadDotenv({ path: resolve(__dirname, '../.env') });
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+// ── Input validation helpers ───────────────────────────────────────────────
+// All container-facing user inputs are validated before they reach any shell
+// or execFile call, preventing command injection.
+function validateRuntime(r) {
+    const s = String(r || 'docker');
+    if (s !== 'docker' && s !== 'podman')
+        throw new Error(`Invalid container runtime "${s}" — must be "docker" or "podman"`);
+    return s;
+}
+// Image names: registry/namespace/name:tag or name@sha256:digest
+function validateImageName(v) {
+    const s = String(v || '');
+    if (!s || !/^[a-zA-Z0-9._\-/:@]+$/.test(s))
+        throw new Error(`Invalid image name "${s}"`);
+    return s;
+}
+// Container IDs: short hex, full hex, or alphanumeric container name
+function validateContainerId(v) {
+    const s = String(v || '');
+    if (!s || !/^[a-zA-Z0-9_.\-]+$/.test(s))
+        throw new Error(`Invalid container ID/name "${s}"`);
+    return s;
+}
+// Port mappings: hostPort:containerPort, e.g. 8080:8080
+function validatePortMapping(v) {
+    const s = String(v || '');
+    if (!s || !/^\d{1,5}:\d{1,5}$/.test(s))
+        throw new Error(`Invalid port mapping "${s}" — expected "hostPort:containerPort"`);
+    return s;
+}
+// Environment variable names: POSIX identifier rules
+function validateEnvKey(v) {
+    const s = String(v || '');
+    if (!s || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(s))
+        throw new Error(`Invalid environment variable name "${s}"`);
+    return s;
+}
+// Registry hostnames: hostname[:port]
+function validateRegistryHost(v) {
+    const s = String(v || '');
+    if (!s || !/^[a-zA-Z0-9._\-]+(:\d+)?$/.test(s))
+        throw new Error(`Invalid registry hostname "${s}"`);
+    return s;
+}
+// Run registry login by piping the password via stdin — never via echo|pipe shell interpolation
+function spawnWithStdin(cmd, args, stdinData) {
+    return new Promise((resolve, reject) => {
+        const proc = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+        let stdout = '';
+        let stderr = '';
+        proc.stdout.on('data', (d) => { stdout += d.toString(); });
+        proc.stderr.on('data', (d) => { stderr += d.toString(); });
+        proc.on('close', (code) => {
+            if (code === 0)
+                resolve({ stdout, stderr });
+            else
+                reject(new Error(`Command "${cmd} ${args.join(' ')}" exited with code ${code}: ${stderr || stdout}`));
+        });
+        proc.on('error', reject);
+        proc.stdin.write(stdinData);
+        proc.stdin.end();
+    });
+}
 const CE_REGIONS = ['us-south', 'us-east', 'eu-de', 'eu-gb', 'jp-tok', 'jp-osa', 'au-syd', 'ca-tor', 'br-sao'];
 // Helper function to get IAM token
 async function getIAMToken(apiKey) {
@@ -86,7 +149,7 @@ async function resolveProjectId(nameOrId, token) {
 // Create MCP server
 const server = new Server({
     name: 'code-engine-mcp-server',
-    version: '1.0.6',
+    version: '1.0.7',
 }, {
     capabilities: {
         tools: {},
@@ -231,6 +294,69 @@ const containerTools = [
                 region: { type: 'string', description: 'ICR region host (default: us.icr.io)' },
             },
             required: ['image'],
+        },
+    },
+    {
+        name: 'tag_container_image',
+        description: 'Tag a local container image with a new name/tag — useful to retag before pushing to ICR',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                source_image: { type: 'string', description: 'Existing image name/tag (e.g. myapp:latest)' },
+                target_image: { type: 'string', description: 'New image name/tag (e.g. us.icr.io/mynamespace/myapp:v1.0.0)' },
+                runtime: { type: 'string', enum: ['docker', 'podman'], description: 'Container runtime (default: auto-detected)' },
+            },
+            required: ['source_image', 'target_image'],
+        },
+    },
+    {
+        name: 'remove_local_image',
+        description: 'Remove a local container image to free disk space',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                image_name: { type: 'string', description: 'Image name/tag to remove (e.g. us.icr.io/mynamespace/myapp:v1.0.0)' },
+                force: { type: 'boolean', description: 'Force removal even if the image is used by a stopped container (default: false)' },
+                runtime: { type: 'string', enum: ['docker', 'podman'] },
+            },
+            required: ['image_name'],
+        },
+    },
+    {
+        name: 'login_to_registry',
+        description: 'Log in to a container registry (e.g. IBM Container Registry) so images can be pushed/pulled. Uses IBM Cloud IAM token for ICR or username/password for other registries.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                registry: { type: 'string', description: 'Registry hostname (default: us.icr.io for ICR)' },
+                username: { type: 'string', description: 'Username — use "iamapikey" for ICR with an IBM Cloud API key' },
+                password: { type: 'string', description: 'Password or API key. For ICR leave blank to use IBMCLOUD_API_KEY env var.' },
+                runtime: { type: 'string', enum: ['docker', 'podman'] },
+            },
+            required: ['registry'],
+        },
+    },
+    {
+        name: 'inspect_container_image',
+        description: 'Inspect a local container image — shows architecture, labels, environment variables, entrypoint, exposed ports, and layer count',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                image_name: { type: 'string', description: 'Image name/tag to inspect' },
+                runtime: { type: 'string', enum: ['docker', 'podman'] },
+            },
+            required: ['image_name'],
+        },
+    },
+    {
+        name: 'prune_images',
+        description: 'Remove unused/dangling container images to reclaim disk space. By default removes only dangling images; use all=true to remove all unused images.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                all: { type: 'boolean', description: 'Remove all unused images, not just dangling ones (default: false)' },
+                runtime: { type: 'string', enum: ['docker', 'podman'] },
+            },
         },
     },
 ];
@@ -783,6 +909,19 @@ const codeEngineTools = [
         },
     },
     {
+        name: 'ce_refresh_icr_pull_secret',
+        description: 'Refresh a Code Engine registry pull secret for IBM Container Registry (ICR) using the server\'s own IBM Cloud API key. Automatically deletes the existing secret and recreates it with fresh credentials. Use this when deployments fail with "no_revision_ready" or "unknown" status — a common cause is a stale or expired ICR pull secret. No API key input required — the server uses its own IBMCLOUD_API_KEY.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                secret_name: { type: 'string', description: 'Name of the registry secret to refresh (default: icr-pull-secret)' },
+                icr_host: { type: 'string', description: 'ICR registry hostname (default: us.icr.io)' },
+            },
+            required: ['project_id'],
+        },
+    },
+    {
         name: 'ce_renew_tls_secret_from_pem',
         description: 'Renew an existing TLS secret in Code Engine by reading updated PEM files from disk. Use this when a Let\'s Encrypt cert has been renewed (every 90 days). Updates the secret in-place — no need to delete and recreate or update domain mappings.',
         inputSchema: {
@@ -897,6 +1036,549 @@ const codeEngineTools = [
                 deploy_timeout_seconds: { type: 'number', description: 'Max seconds to wait for the app to become ready (default 180)' },
             },
             required: ['project_id_or_name', 'build_name', 'app_name', 'image_secret'],
+        },
+    },
+    // ─── App Revisions ────────────────────────────────────────────────────────────
+    {
+        name: 'ce_list_app_revisions',
+        description: 'List all revisions (deployed versions) of a Code Engine application',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                app_name: { type: 'string' },
+            },
+            required: ['project_id', 'app_name'],
+        },
+    },
+    {
+        name: 'ce_get_app_revision',
+        description: 'Get details of a specific revision of a Code Engine application',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                app_name: { type: 'string' },
+                revision_name: { type: 'string' },
+            },
+            required: ['project_id', 'app_name', 'revision_name'],
+        },
+    },
+    {
+        name: 'ce_delete_app_revision',
+        description: 'Delete a specific revision of a Code Engine application',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                app_name: { type: 'string' },
+                revision_name: { type: 'string' },
+            },
+            required: ['project_id', 'app_name', 'revision_name'],
+        },
+    },
+    // ─── Update operations ────────────────────────────────────────────────────────
+    {
+        name: 'ce_update_job',
+        description: 'Update an existing Code Engine job definition (PATCH)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                job_name: { type: 'string' },
+                image: { type: 'string', description: 'New container image reference' },
+                image_secret: { type: 'string' },
+                scale_array_spec: { type: 'string', description: 'Array indices to run (e.g. "0-9")' },
+                scale_cpu_limit: { type: 'string' },
+                scale_memory_limit: { type: 'string' },
+                env_vars: { type: 'object', description: 'Key/value environment variables' },
+            },
+            required: ['project_id', 'job_name'],
+        },
+    },
+    {
+        name: 'ce_update_build',
+        description: 'Update an existing Code Engine build configuration (PATCH)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                build_name: { type: 'string' },
+                output_image: { type: 'string' },
+                output_secret: { type: 'string' },
+                source_url: { type: 'string' },
+                source_revision: { type: 'string' },
+                strategy_size: { type: 'string', enum: ['small', 'medium', 'large', 'xlarge', 'xxlarge'] },
+                strategy_spec_file: { type: 'string', description: 'Path to Dockerfile or buildpacks config (default: Dockerfile)' },
+            },
+            required: ['project_id', 'build_name'],
+        },
+    },
+    {
+        name: 'ce_update_config_map',
+        description: 'Update an existing Code Engine configmap (PATCH)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                config_map_name: { type: 'string' },
+                data: { type: 'object', description: 'New key/value data to replace configmap contents' },
+            },
+            required: ['project_id', 'config_map_name', 'data'],
+        },
+    },
+    {
+        name: 'ce_update_domain_mapping',
+        description: 'Update an existing Code Engine custom domain mapping (PATCH) — e.g. change the target app',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                domain_name: { type: 'string' },
+                app_name: { type: 'string', description: 'New application to route traffic to' },
+                tls_secret: { type: 'string', description: 'New TLS secret name (optional)' },
+            },
+            required: ['project_id', 'domain_name'],
+        },
+    },
+    // ─── Functions ────────────────────────────────────────────────────────────────
+    {
+        name: 'ce_list_function_runtimes',
+        description: 'List all available function runtimes supported by IBM Code Engine (no project required)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                region: { type: 'string', description: 'CE region (e.g. us-south). Defaults to us-south.' },
+            },
+            required: [],
+        },
+    },
+    {
+        name: 'ce_list_functions',
+        description: 'List all serverless functions in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+            },
+            required: ['project_id'],
+        },
+    },
+    {
+        name: 'ce_get_function',
+        description: 'Get details of a specific serverless function in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                function_name: { type: 'string' },
+            },
+            required: ['project_id', 'function_name'],
+        },
+    },
+    {
+        name: 'ce_create_function',
+        description: 'Create a serverless function in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                name: { type: 'string' },
+                runtime: { type: 'string', description: 'Runtime identifier (e.g. nodejs-20, python-3.11). Use ce_list_function_runtimes to see all options.' },
+                code_reference: { type: 'string', description: 'Inline code as a data URL or reference to a code bundle image' },
+                code_main: { type: 'string', description: 'Entry point function name (default: main)' },
+                scale_concurrency: { type: 'number', description: 'Max requests per instance (default: 1)' },
+                scale_cpu_limit: { type: 'string', description: 'CPU limit (default: 1)' },
+                scale_memory_limit: { type: 'string', description: 'Memory limit (default: 4G)' },
+                env_vars: { type: 'object', description: 'Key/value environment variables' },
+            },
+            required: ['project_id', 'name', 'runtime', 'code_reference'],
+        },
+    },
+    {
+        name: 'ce_update_function',
+        description: 'Update an existing Code Engine serverless function (PATCH)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                function_name: { type: 'string' },
+                runtime: { type: 'string' },
+                code_reference: { type: 'string' },
+                code_main: { type: 'string' },
+                scale_concurrency: { type: 'number' },
+                scale_cpu_limit: { type: 'string' },
+                scale_memory_limit: { type: 'string' },
+                env_vars: { type: 'object' },
+            },
+            required: ['project_id', 'function_name'],
+        },
+    },
+    {
+        name: 'ce_delete_function',
+        description: 'Delete a serverless function from a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                function_name: { type: 'string' },
+            },
+            required: ['project_id', 'function_name'],
+        },
+    },
+    // ─── Service Bindings ─────────────────────────────────────────────────────────
+    {
+        name: 'ce_list_bindings',
+        description: 'List all service bindings in a Code Engine project (bindings connect IBM Cloud services to apps/jobs)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+            },
+            required: ['project_id'],
+        },
+    },
+    {
+        name: 'ce_create_binding',
+        description: 'Create a service binding to connect an IBM Cloud service instance to a Code Engine component',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                component_name: { type: 'string', description: 'Name of the CE app or job to bind the service to' },
+                component_resource_type: { type: 'string', enum: ['app_v2', 'job_v2', 'function_v2'], description: 'Resource type of the component' },
+                secret_name: { type: 'string', description: 'Name of the operator secret referencing the IBM Cloud service instance' },
+                prefix: { type: 'string', description: 'Prefix for environment variable names injected into the component (optional)' },
+            },
+            required: ['project_id', 'component_name', 'component_resource_type', 'secret_name'],
+        },
+    },
+    {
+        name: 'ce_get_binding',
+        description: 'Get details of a specific service binding in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                binding_id: { type: 'string', description: 'The binding ID (use ce_list_bindings to find it)' },
+            },
+            required: ['project_id', 'binding_id'],
+        },
+    },
+    {
+        name: 'ce_delete_binding',
+        description: 'Delete a service binding from a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                binding_id: { type: 'string' },
+            },
+            required: ['project_id', 'binding_id'],
+        },
+    },
+    // ─── Project extras ────────────────────────────────────────────────────────────
+    {
+        name: 'ce_get_project_status',
+        description: 'Get the status details of a Code Engine project (readiness, enabled components, etc.)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+            },
+            required: ['project_id'],
+        },
+    },
+    {
+        name: 'ce_list_egress_ips',
+        description: 'List the public egress IP addresses used by a Code Engine project (useful for allowlisting in firewalls)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+            },
+            required: ['project_id'],
+        },
+    },
+    {
+        name: 'ce_list_allowed_outbound_destinations',
+        description: 'List allowed outbound destinations configured for a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+            },
+            required: ['project_id'],
+        },
+    },
+    {
+        name: 'ce_create_allowed_outbound_destination',
+        description: 'Create an allowed outbound destination (CIDR block or domain) for a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                name: { type: 'string', description: 'Name for this allowed outbound destination rule' },
+                type: { type: 'string', enum: ['cidr_block', 'fqdn'], description: 'Type of destination: CIDR block or fully-qualified domain name' },
+                cidr_block: { type: 'string', description: 'CIDR block (required when type=cidr_block, e.g. 1.2.3.4/24)' },
+                fqdn: { type: 'string', description: 'Fully-qualified domain name (required when type=fqdn, e.g. example.com)' },
+            },
+            required: ['project_id', 'name', 'type'],
+        },
+    },
+    {
+        name: 'ce_get_allowed_outbound_destination',
+        description: 'Get details of a specific allowed outbound destination in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                destination_name: { type: 'string' },
+            },
+            required: ['project_id', 'destination_name'],
+        },
+    },
+    {
+        name: 'ce_update_allowed_outbound_destination',
+        description: 'Update an existing allowed outbound destination in a Code Engine project (PATCH)',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                destination_name: { type: 'string' },
+                cidr_block: { type: 'string', description: 'New CIDR block value' },
+                fqdn: { type: 'string', description: 'New FQDN value' },
+            },
+            required: ['project_id', 'destination_name'],
+        },
+    },
+    {
+        name: 'ce_delete_allowed_outbound_destination',
+        description: 'Delete an allowed outbound destination from a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                destination_name: { type: 'string' },
+            },
+            required: ['project_id', 'destination_name'],
+        },
+    },
+    // ─── Persistent Data Stores ───────────────────────────────────────────────────
+    {
+        name: 'ce_list_persistent_data_stores',
+        description: 'List all persistent data stores (cloud object storage bindings) in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+            },
+            required: ['project_id'],
+        },
+    },
+    {
+        name: 'ce_create_persistent_data_store',
+        description: 'Create a persistent data store binding (COS bucket) in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                name: { type: 'string', description: 'Name for this persistent data store' },
+                secret_name: { type: 'string', description: 'Name of the secret containing COS credentials' },
+                bucket_name: { type: 'string', description: 'COS bucket name to bind' },
+                endpoint: { type: 'string', description: 'COS endpoint URL (e.g. https://s3.us-south.cloud-object-storage.appdomain.cloud)' },
+            },
+            required: ['project_id', 'name', 'secret_name', 'bucket_name'],
+        },
+    },
+    {
+        name: 'ce_get_persistent_data_store',
+        description: 'Get details of a specific persistent data store in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                data_store_name: { type: 'string' },
+            },
+            required: ['project_id', 'data_store_name'],
+        },
+    },
+    {
+        name: 'ce_delete_persistent_data_store',
+        description: 'Delete a persistent data store from a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                data_store_name: { type: 'string' },
+            },
+            required: ['project_id', 'data_store_name'],
+        },
+    },
+    // ─── Fleets ────────────────────────────────────────────────────────────────────
+    {
+        name: 'ce_list_fleets',
+        description: 'List all fleets in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+            },
+            required: ['project_id'],
+        },
+    },
+    {
+        name: 'ce_create_fleet',
+        description: 'Create a fleet in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                name: { type: 'string' },
+                image: { type: 'string', description: 'Container image reference' },
+                image_secret: { type: 'string' },
+                scale_cpu_limit: { type: 'string' },
+                scale_memory_limit: { type: 'string' },
+                env_vars: { type: 'object' },
+            },
+            required: ['project_id', 'name', 'image'],
+        },
+    },
+    {
+        name: 'ce_get_fleet',
+        description: 'Get details of a specific fleet in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                fleet_id: { type: 'string' },
+            },
+            required: ['project_id', 'fleet_id'],
+        },
+    },
+    {
+        name: 'ce_delete_fleet',
+        description: 'Delete a fleet from a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                fleet_id: { type: 'string' },
+            },
+            required: ['project_id', 'fleet_id'],
+        },
+    },
+    {
+        name: 'ce_cancel_fleet',
+        description: 'Cancel a running fleet in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                fleet_id: { type: 'string' },
+            },
+            required: ['project_id', 'fleet_id'],
+        },
+    },
+    // ─── Fleet Tasks ──────────────────────────────────────────────────────────────
+    {
+        name: 'ce_list_fleet_tasks',
+        description: 'List all tasks for a fleet in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                fleet_id: { type: 'string' },
+            },
+            required: ['project_id', 'fleet_id'],
+        },
+    },
+    {
+        name: 'ce_get_fleet_task',
+        description: 'Get details of a specific task within a fleet',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                fleet_id: { type: 'string' },
+                task_id: { type: 'string' },
+            },
+            required: ['project_id', 'fleet_id', 'task_id'],
+        },
+    },
+    // ─── Fleet Workers ────────────────────────────────────────────────────────────
+    {
+        name: 'ce_list_fleet_workers',
+        description: 'List all workers for a fleet in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                fleet_id: { type: 'string' },
+            },
+            required: ['project_id', 'fleet_id'],
+        },
+    },
+    {
+        name: 'ce_get_fleet_worker',
+        description: 'Get details of a specific worker within a fleet',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                fleet_id: { type: 'string' },
+                worker_id: { type: 'string' },
+            },
+            required: ['project_id', 'fleet_id', 'worker_id'],
+        },
+    },
+    // ─── Subnet Pools ─────────────────────────────────────────────────────────────
+    {
+        name: 'ce_list_subnet_pools',
+        description: 'List all subnet pools in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+            },
+            required: ['project_id'],
+        },
+    },
+    {
+        name: 'ce_create_subnet_pool',
+        description: 'Create a subnet pool in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                name: { type: 'string' },
+                cidr: { type: 'string', description: 'CIDR block for the subnet pool (e.g. 10.0.0.0/24)' },
+            },
+            required: ['project_id', 'name', 'cidr'],
+        },
+    },
+    {
+        name: 'ce_get_subnet_pool',
+        description: 'Get details of a specific subnet pool in a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                subnet_pool_id: { type: 'string' },
+            },
+            required: ['project_id', 'subnet_pool_id'],
+        },
+    },
+    {
+        name: 'ce_delete_subnet_pool',
+        description: 'Delete a subnet pool from a Code Engine project',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                project_id: { type: 'string' },
+                subnet_pool_id: { type: 'string' },
+            },
+            required: ['project_id', 'subnet_pool_id'],
         },
     },
 ];
@@ -1018,8 +1700,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 return { content: [{ type: 'text', text: JSON.stringify({ valid, summary, errors, warnings, info, dockerfile: dfPath }, null, 2) }], ...(valid ? {} : { isError: true }) };
             }
             case 'detect_container_runtime': {
-                const { stdout: dockerVersion } = await execAsync('docker --version').catch(() => ({ stdout: '' }));
-                const { stdout: podmanVersion } = await execAsync('podman --version').catch(() => ({ stdout: '' }));
+                const { stdout: dockerVersion } = await execFileAsync('docker', ['--version']).catch(() => ({ stdout: '' }));
+                const { stdout: podmanVersion } = await execFileAsync('podman', ['--version']).catch(() => ({ stdout: '' }));
                 return {
                     content: [
                         {
@@ -1034,9 +1716,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 };
             }
             case 'build_container_image': {
-                const runtime = args.runtime || 'docker';
-                const cmd = `${runtime} build -t ${args.image_name} -f ${args.dockerfile_path} ${args.context_path}`;
-                const { stdout, stderr } = await execAsync(cmd);
+                const runtime = validateRuntime(args.runtime || 'docker');
+                const imageName = validateImageName(args.image_name);
+                const buildArgs = ['build', '-t', imageName];
+                if (args.dockerfile_path)
+                    buildArgs.push('-f', args.dockerfile_path);
+                buildArgs.push(args.context_path || '.');
+                const { stdout, stderr } = await execFileAsync(runtime, buildArgs);
                 // Container runtimes write build progress to stderr — label it clearly
                 const build_output = [stdout, stderr].filter(Boolean).join('\n').trim();
                 return {
@@ -1045,7 +1731,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                             type: 'text',
                             text: JSON.stringify({
                                 success: true,
-                                command: cmd,
+                                command: `${runtime} ${buildArgs.join(' ')}`,
                                 build_output,
                             }, null, 2),
                         },
@@ -1053,16 +1739,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 };
             }
             case 'push_container_image': {
-                const runtime = args.runtime || 'docker';
-                const cmd = `${runtime} push ${args.image_name}`;
-                const { stdout, stderr } = await execAsync(cmd);
+                const runtime = validateRuntime(args.runtime || 'docker');
+                const imageName = validateImageName(args.image_name);
+                const { stdout, stderr } = await execFileAsync(runtime, ['push', imageName]);
                 return {
                     content: [
                         {
                             type: 'text',
                             text: JSON.stringify({
                                 success: true,
-                                command: cmd,
+                                command: `${runtime} push ${imageName}`,
                                 output: stdout,
                                 error: stderr
                             }, null, 2),
@@ -1071,9 +1757,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 };
             }
             case 'list_local_images': {
-                const runtime = args.runtime || 'docker';
-                const cmd = `${runtime} images --format "{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}"`;
-                const { stdout } = await execAsync(cmd);
+                const runtime = validateRuntime(args.runtime || 'docker');
+                const { stdout } = await execFileAsync(runtime, ['images', '--format', '{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.Size}}']);
                 return {
                     content: [
                         {
@@ -1084,25 +1769,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 };
             }
             case 'test_container_locally': {
-                const runtime = args.runtime || 'docker';
-                let cmd = `${runtime} run -d`;
+                const runtime = validateRuntime(args.runtime || 'docker');
+                const runArgs = ['run', '-d'];
                 if (args.port_mapping) {
-                    cmd += ` -p ${args.port_mapping}`;
+                    runArgs.push('-p', validatePortMapping(args.port_mapping));
                 }
                 if (args.env_vars) {
-                    Object.entries(args.env_vars).forEach(([key, value]) => {
-                        cmd += ` -e ${key}="${value}"`;
-                    });
+                    for (const [key, value] of Object.entries(args.env_vars)) {
+                        // Pass as a single arg: execFile does not invoke a shell so KEY=VALUE is safe
+                        runArgs.push('-e', `${validateEnvKey(key)}=${value}`);
+                    }
                 }
-                cmd += ` ${args.image_name}`;
-                const { stdout } = await execAsync(cmd);
+                runArgs.push(validateImageName(args.image_name));
+                const { stdout } = await execFileAsync(runtime, runArgs);
                 return {
                     content: [
                         {
                             type: 'text',
                             text: JSON.stringify({
                                 container_id: stdout.trim(),
-                                command: cmd,
+                                command: `${runtime} ${runArgs.join(' ')}`,
                                 message: 'Container started successfully'
                             }, null, 2),
                         },
@@ -1110,9 +1796,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 };
             }
             case 'get_container_logs': {
-                const runtime = args.runtime || 'docker';
-                const cmd = `${runtime} logs ${args.container_id}`;
-                const { stdout } = await execAsync(cmd);
+                const runtime = validateRuntime(args.runtime || 'docker');
+                const { stdout } = await execFileAsync(runtime, ['logs', validateContainerId(args.container_id)]);
                 return {
                     content: [
                         {
@@ -1123,11 +1808,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 };
             }
             case 'stop_local_container': {
-                const runtime = args.runtime || 'docker';
-                const stopCmd = `${runtime} stop ${args.container_id}`;
-                const rmCmd = `${runtime} rm ${args.container_id}`;
-                await execAsync(stopCmd);
-                await execAsync(rmCmd);
+                const runtime = validateRuntime(args.runtime || 'docker');
+                const containerId = validateContainerId(args.container_id);
+                await execFileAsync(runtime, ['stop', containerId]);
+                await execFileAsync(runtime, ['rm', containerId]);
                 return {
                     content: [
                         {
@@ -1141,10 +1825,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 };
             }
             case 'list_local_containers': {
-                const runtime = args.runtime || 'docker';
-                const allFlag = args.all ? '-a' : '';
-                const cmd = `${runtime} ps ${allFlag} --format "{{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"`;
-                const { stdout } = await execAsync(cmd);
+                const runtime = validateRuntime(args.runtime || 'docker');
+                const psArgs = ['ps', '--format', '{{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'];
+                if (args.all)
+                    psArgs.push('-a');
+                const { stdout } = await execFileAsync(runtime, psArgs);
                 return {
                     content: [
                         {
@@ -1153,6 +1838,60 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         },
                     ],
                 };
+            }
+            case 'tag_container_image': {
+                const runtime = validateRuntime(args.runtime || (await execFileAsync('podman', ['--version']).then(() => 'podman').catch(() => 'docker')));
+                const src = validateImageName(args.source_image);
+                const tgt = validateImageName(args.target_image);
+                await execFileAsync(runtime, ['tag', src, tgt]);
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, command: `${runtime} tag ${src} ${tgt}`, source: src, target: tgt }, null, 2) }] };
+            }
+            case 'remove_local_image': {
+                const runtime = validateRuntime(args.runtime || (await execFileAsync('podman', ['--version']).then(() => 'podman').catch(() => 'docker')));
+                const rmiArgs = ['rmi'];
+                if (args.force)
+                    rmiArgs.push('-f');
+                rmiArgs.push(validateImageName(args.image_name));
+                const { stdout, stderr } = await execFileAsync(runtime, rmiArgs);
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, command: `${runtime} ${rmiArgs.join(' ')}`, output: [stdout, stderr].filter(Boolean).join('\n').trim() }, null, 2) }] };
+            }
+            case 'login_to_registry': {
+                const runtime = validateRuntime(args.runtime || (await execFileAsync('podman', ['--version']).then(() => 'podman').catch(() => 'docker')));
+                const registry = validateRegistryHost(args.registry || 'us.icr.io');
+                const username = args.username || 'iamapikey';
+                // Use supplied password, or fall back to IBMCLOUD_API_KEY for ICR
+                const password = args.password || getApiKey();
+                // Pipe password via stdin — never via echo|shell to avoid command injection
+                const { stdout, stderr } = await spawnWithStdin(runtime, ['login', registry, '-u', username, '--password-stdin'], password);
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, registry, username, output: [stdout, stderr].filter(Boolean).join('\n').trim() }, null, 2) }] };
+            }
+            case 'inspect_container_image': {
+                const runtime = validateRuntime(args.runtime || (await execFileAsync('podman', ['--version']).then(() => 'podman').catch(() => 'docker')));
+                const { stdout } = await execFileAsync(runtime, ['inspect', validateImageName(args.image_name)]);
+                const raw = JSON.parse(stdout);
+                const img = Array.isArray(raw) ? raw[0] : raw;
+                const summary = {
+                    id: img.Id?.substring(0, 12),
+                    created: img.Created,
+                    architecture: img.Architecture,
+                    os: img.Os,
+                    size_mb: img.Size ? (img.Size / 1024 / 1024).toFixed(1) : undefined,
+                    labels: img.Config?.Labels || img.Labels,
+                    env: img.Config?.Env,
+                    entrypoint: img.Config?.Entrypoint,
+                    cmd: img.Config?.Cmd,
+                    exposed_ports: img.Config?.ExposedPorts ? Object.keys(img.Config.ExposedPorts) : [],
+                    layers: img.RootFS?.Layers?.length ?? img.GraphDriver?.Data?.LowerDir?.split(':').length,
+                };
+                return { content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }] };
+            }
+            case 'prune_images': {
+                const runtime = validateRuntime(args.runtime || (await execFileAsync('podman', ['--version']).then(() => 'podman').catch(() => 'docker')));
+                const pruneArgs = ['image', 'prune', '-f'];
+                if (args.all)
+                    pruneArgs.push('-a');
+                const { stdout, stderr } = await execFileAsync(runtime, pruneArgs);
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, command: `${runtime} ${pruneArgs.join(' ')}`, output: [stdout, stderr].filter(Boolean).join('\n').trim() }, null, 2) }] };
             }
             case 'icr_list_namespaces': {
                 const apiKey = getApiKey();
@@ -1607,6 +2346,31 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 const response = await axios.patch(`${base}/secrets/${args.secret_name}`, body, { headers: patchHeaders });
                 return { content: [{ type: 'text', text: JSON.stringify({ name: response.data.name, format: response.data.format, updated_at: response.data.updated_at, message: 'Secret updated successfully' }, null, 2) }] };
             }
+            case 'ce_refresh_icr_pull_secret': {
+                const apiKey = getApiKey();
+                const token = await getIAMToken(apiKey);
+                const { base, headers } = await ceApi(args.project_id, token);
+                const secretName = args.secret_name || 'icr-pull-secret';
+                const icrHost = args.icr_host || 'us.icr.io';
+                // Delete existing secret if present (ignore 404)
+                try {
+                    await axios.delete(`${base}/secrets/${secretName}`, { headers });
+                }
+                catch (e) {
+                    if (e.response?.status !== 404)
+                        throw e;
+                }
+                // Recreate with current API key credentials
+                const body = { name: secretName, format: 'registry', data: { username: 'iamapikey', password: apiKey, server: icrHost } };
+                const response = await axios.post(`${base}/secrets`, body, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({
+                                name: response.data.name,
+                                format: response.data.format,
+                                server: icrHost,
+                                created_at: response.data.created_at,
+                                message: `Registry pull secret "${secretName}" refreshed with current API key credentials. You can now redeploy your application.`,
+                            }, null, 2) }] };
+            }
             case 'ce_renew_tls_secret_from_pem': {
                 const fs = await import('fs');
                 const os = await import('os');
@@ -1771,10 +2535,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                     }
                     if (exposedPorts.includes(80))
                         valErrors.push('Port 80 is not allowed in Code Engine. Use port 8080.');
-                    // nginx sed pattern check
+                    // nginx sed pattern check — catch both exact-space and \s* patterns that fail in Alpine BusyBox sed
                     dfLines.filter(l => /sed\s+-i/.test(l) && /listen/.test(l)).forEach(sl => {
-                        if (/listen\s{2,}80;/.test(sl)) {
-                            valWarnings.push(`Fragile nginx sed pattern: "${sl.trim()}" — use 's/listen[[:space:]]*80;/listen 8080;/g' to handle variable whitespace in nginx:alpine`);
+                        if (/listen\s{2,}80;/.test(sl) || /listen\\s[*+?]/.test(sl)) {
+                            valWarnings.push(`Fragile nginx sed pattern: "${sl.trim()}" — Alpine BusyBox sed does not support \\s*, \\s+. Use 's/listen[[:space:]]*80;/listen 8080;/g' (POSIX character class) instead`);
                         }
                     });
                     if (valErrors.length > 0) {
@@ -1795,7 +2559,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 // 1) detect runtime
                 let runtime = 'podman';
                 try {
-                    await execAsync('podman --version');
+                    await execFileAsync('podman', ['--version']);
                 }
                 catch {
                     runtime = 'docker';
@@ -1810,20 +2574,36 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 const imageTag = args.image_tag || 'latest';
                 const imageName = `${icrHost}/${args.icr_namespace}/${args.app_name}:${imageTag}`;
                 const contextPath = contextPathRaw;
-                const buildCmd = `${runtime} build --platform linux/amd64 -t ${imageName} ${contextPath}`;
-                const { stdout: buildStdout, stderr: buildStderr } = await execAsync(buildCmd);
+                const buildCmdArgs = ['build', '--platform', 'linux/amd64', '-t', validateImageName(imageName), contextPath];
+                const { stdout: buildStdout, stderr: buildStderr } = await execFileAsync(runtime, buildCmdArgs);
                 const buildOutput = [buildStdout, buildStderr].filter(Boolean).join('\n').trim();
                 // show last 20 lines of build output so it's not overwhelming
                 const buildLines = buildOutput.split('\n');
                 const buildSummary = buildLines.length > 20 ? `...${buildLines.slice(-20).join('\n')}` : buildOutput;
                 steps.push(`[3/5] Built ${imageName} for linux/amd64:\n${buildSummary}`);
                 // 4) push
-                const pushCmd = `${runtime} push ${imageName}`;
-                const { stdout: pushStdout, stderr: pushStderr } = await execAsync(pushCmd);
+                const { stdout: pushStdout, stderr: pushStderr } = await execFileAsync(runtime, ['push', imageName]);
                 const pushOutput = [pushStdout, pushStderr].filter(Boolean).join('\n').trim();
                 steps.push(`[4/5] Pushed to ${icrHost}:\n${pushOutput}`);
-                // 5) create or update CE app
+                // 4.5) auto-refresh the ICR pull secret so Code Engine can always pull the freshly-pushed image
+                // A stale secret (409 already-exists but wrong password) causes "no_revision_ready" / "reason: unknown".
                 const { base: base1, headers: headers1 } = await ceApi(projectId1, token1);
+                const pullSecretName = args.image_secret || 'icr-pull-secret';
+                try {
+                    try {
+                        await axios.delete(`${base1}/secrets/${pullSecretName}`, { headers: headers1 });
+                    }
+                    catch (e) {
+                        if (e.response?.status !== 404)
+                            throw e;
+                    }
+                    await axios.post(`${base1}/secrets`, { name: pullSecretName, format: 'registry', data: { username: 'iamapikey', password: getApiKey(), server: icrHost } }, { headers: headers1 });
+                    steps.push(`[4.5/5] Refreshed pull secret "${pullSecretName}" with current credentials`);
+                }
+                catch (e) {
+                    steps.push(`[4.5/5] Warning: Could not refresh pull secret "${pullSecretName}": ${e.message}`);
+                }
+                // 5) create or update CE app
                 const appPayload1 = {
                     image_reference: imageName,
                     image_secret: args.image_secret,
@@ -1977,6 +2757,376 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                                 steps: steps3,
                                 app_poll_history: appPollHistory,
                             }, null, 2) }] };
+            }
+            // ─── App Revisions ─────────────────────────────────────────────────────────
+            case 'ce_list_app_revisions': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/apps/${args.app_name}/revisions`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({ revisions: response.data.revisions || [], total: response.data.revisions?.length || 0 }, null, 2) }] };
+            }
+            case 'ce_get_app_revision': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/apps/${args.app_name}/revisions/${args.revision_name}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_delete_app_revision': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                await axios.delete(`${base}/apps/${args.app_name}/revisions/${args.revision_name}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, message: `Revision ${args.revision_name} deleted` }, null, 2) }] };
+            }
+            // ─── Update operations ──────────────────────────────────────────────────────
+            case 'ce_update_job': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const current = await axios.get(`${base}/jobs/${args.job_name}`, { headers });
+                const etag = current.data.entity_tag;
+                const patch = {};
+                if (args.image)
+                    patch.image_reference = args.image;
+                if (args.image_secret)
+                    patch.image_secret = args.image_secret;
+                if (args.scale_array_spec)
+                    patch.scale_array_spec = args.scale_array_spec;
+                if (args.scale_cpu_limit)
+                    patch.scale_cpu_limit = args.scale_cpu_limit;
+                if (args.scale_memory_limit)
+                    patch.scale_memory_limit = args.scale_memory_limit;
+                if (args.env_vars) {
+                    patch.run_env_variables = Object.entries(args.env_vars).map(([name, value]) => ({ type: 'literal', name, value }));
+                }
+                const response = await axios.patch(`${base}/jobs/${args.job_name}`, patch, {
+                    headers: { ...headers, 'Content-Type': 'application/merge-patch+json', 'If-Match': etag },
+                });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_update_build': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const current = await axios.get(`${base}/builds/${args.build_name}`, { headers });
+                const etag = current.data.entity_tag;
+                const patch = {};
+                if (args.output_image)
+                    patch.output_image = args.output_image;
+                if (args.output_secret)
+                    patch.output_secret = args.output_secret;
+                if (args.source_url)
+                    patch.source_url = args.source_url;
+                if (args.source_revision)
+                    patch.source_revision = args.source_revision;
+                if (args.strategy_size)
+                    patch.strategy_size = args.strategy_size;
+                if (args.strategy_spec_file)
+                    patch.strategy_spec_file = args.strategy_spec_file;
+                const response = await axios.patch(`${base}/builds/${args.build_name}`, patch, {
+                    headers: { ...headers, 'Content-Type': 'application/merge-patch+json', 'If-Match': etag },
+                });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_update_config_map': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const current = await axios.get(`${base}/config_maps/${args.config_map_name}`, { headers });
+                const etag = current.data.entity_tag;
+                const response = await axios.patch(`${base}/config_maps/${args.config_map_name}`, { data: args.data }, {
+                    headers: { ...headers, 'Content-Type': 'application/merge-patch+json', 'If-Match': etag },
+                });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_update_domain_mapping': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const current = await axios.get(`${base}/domain_mappings/${encodeURIComponent(args.domain_name)}`, { headers });
+                const etag = current.data.entity_tag;
+                const patch = {};
+                if (args.app_name)
+                    patch.component = { resource_type: 'app_v2', name: args.app_name };
+                if (args.tls_secret)
+                    patch.tls_secret = args.tls_secret;
+                const response = await axios.patch(`${base}/domain_mappings/${encodeURIComponent(args.domain_name)}`, patch, {
+                    headers: { ...headers, 'Content-Type': 'application/merge-patch+json', 'If-Match': etag },
+                });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            // ─── Functions ──────────────────────────────────────────────────────────────
+            case 'ce_list_function_runtimes': {
+                const token = await getIAMToken(getApiKey());
+                const region = args.region || 'us-south';
+                const response = await axios.get(`https://api.${region}.codeengine.cloud.ibm.com/v2/function_runtimes`, { headers: { Authorization: `Bearer ${token}` } });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_list_functions': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/functions`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({ functions: response.data.functions || [], total: response.data.functions?.length || 0 }, null, 2) }] };
+            }
+            case 'ce_get_function': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/functions/${args.function_name}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_create_function': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const body = {
+                    name: args.name,
+                    runtime: args.runtime,
+                    code_reference: args.code_reference,
+                    code_main: args.code_main ?? 'main',
+                    scale_concurrency: args.scale_concurrency ?? 1,
+                    scale_cpu_limit: args.scale_cpu_limit ?? '1',
+                    scale_memory_limit: args.scale_memory_limit ?? '4G',
+                };
+                if (args.env_vars) {
+                    body.run_env_variables = Object.entries(args.env_vars).map(([name, value]) => ({ type: 'literal', name, value }));
+                }
+                const response = await axios.post(`${base}/functions`, body, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_update_function': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const current = await axios.get(`${base}/functions/${args.function_name}`, { headers });
+                const etag = current.data.entity_tag;
+                const patch = {};
+                if (args.runtime)
+                    patch.runtime = args.runtime;
+                if (args.code_reference)
+                    patch.code_reference = args.code_reference;
+                if (args.code_main)
+                    patch.code_main = args.code_main;
+                if (args.scale_concurrency !== undefined)
+                    patch.scale_concurrency = args.scale_concurrency;
+                if (args.scale_cpu_limit)
+                    patch.scale_cpu_limit = args.scale_cpu_limit;
+                if (args.scale_memory_limit)
+                    patch.scale_memory_limit = args.scale_memory_limit;
+                if (args.env_vars) {
+                    patch.run_env_variables = Object.entries(args.env_vars).map(([name, value]) => ({ type: 'literal', name, value }));
+                }
+                const response = await axios.patch(`${base}/functions/${args.function_name}`, patch, {
+                    headers: { ...headers, 'Content-Type': 'application/merge-patch+json', 'If-Match': etag },
+                });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_delete_function': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                await axios.delete(`${base}/functions/${args.function_name}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, message: `Function ${args.function_name} deleted` }, null, 2) }] };
+            }
+            // ─── Service Bindings ────────────────────────────────────────────────────────
+            case 'ce_list_bindings': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/bindings`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({ bindings: response.data.bindings || [], total: response.data.bindings?.length || 0 }, null, 2) }] };
+            }
+            case 'ce_create_binding': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const body = {
+                    component: { resource_type: args.component_resource_type, name: args.component_name },
+                    secret_name: args.secret_name,
+                };
+                if (args.prefix)
+                    body.prefix = args.prefix;
+                const response = await axios.post(`${base}/bindings`, body, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_get_binding': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/bindings/${args.binding_id}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_delete_binding': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                await axios.delete(`${base}/bindings/${args.binding_id}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, message: `Binding ${args.binding_id} deleted` }, null, 2) }] };
+            }
+            // ─── Project extras ─────────────────────────────────────────────────────────
+            case 'ce_get_project_status': {
+                const token = await getIAMToken(getApiKey());
+                const region = await getProjectRegion(args.project_id, token);
+                const response = await axios.get(`https://api.${region}.codeengine.cloud.ibm.com/v2/projects/${args.project_id}/status_details`, { headers: { Authorization: `Bearer ${token}` } });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_list_egress_ips': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/egress_ips`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_list_allowed_outbound_destinations': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/allowed_outbound_destinations`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_create_allowed_outbound_destination': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const body = { name: args.name, type: args.type };
+                if (args.cidr_block)
+                    body.cidr_block = args.cidr_block;
+                if (args.fqdn)
+                    body.fqdn = args.fqdn;
+                const response = await axios.post(`${base}/allowed_outbound_destinations`, body, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_get_allowed_outbound_destination': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/allowed_outbound_destinations/${args.destination_name}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_update_allowed_outbound_destination': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const current = await axios.get(`${base}/allowed_outbound_destinations/${args.destination_name}`, { headers });
+                const etag = current.data.entity_tag;
+                const patch = {};
+                if (args.cidr_block)
+                    patch.cidr_block = args.cidr_block;
+                if (args.fqdn)
+                    patch.fqdn = args.fqdn;
+                const response = await axios.patch(`${base}/allowed_outbound_destinations/${args.destination_name}`, patch, {
+                    headers: { ...headers, 'Content-Type': 'application/merge-patch+json', 'If-Match': etag },
+                });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_delete_allowed_outbound_destination': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                await axios.delete(`${base}/allowed_outbound_destinations/${args.destination_name}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, message: `Allowed outbound destination ${args.destination_name} deleted` }, null, 2) }] };
+            }
+            // ─── Persistent Data Stores ─────────────────────────────────────────────────
+            case 'ce_list_persistent_data_stores': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/persistent_data_stores`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_create_persistent_data_store': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const body = { name: args.name, secret_name: args.secret_name, bucket_name: args.bucket_name };
+                if (args.endpoint)
+                    body.endpoint = args.endpoint;
+                const response = await axios.post(`${base}/persistent_data_stores`, body, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_get_persistent_data_store': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/persistent_data_stores/${args.data_store_name}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_delete_persistent_data_store': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                await axios.delete(`${base}/persistent_data_stores/${args.data_store_name}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, message: `Persistent data store ${args.data_store_name} deleted` }, null, 2) }] };
+            }
+            // ─── Fleets ─────────────────────────────────────────────────────────────────
+            case 'ce_list_fleets': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/fleets`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_create_fleet': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const body = { name: args.name, image_reference: args.image };
+                if (args.image_secret)
+                    body.image_secret = args.image_secret;
+                if (args.scale_cpu_limit)
+                    body.scale_cpu_limit = args.scale_cpu_limit;
+                if (args.scale_memory_limit)
+                    body.scale_memory_limit = args.scale_memory_limit;
+                if (args.env_vars) {
+                    body.run_env_variables = Object.entries(args.env_vars).map(([name, value]) => ({ type: 'literal', name, value }));
+                }
+                const response = await axios.post(`${base}/fleets`, body, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_get_fleet': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/fleets/${args.fleet_id}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_delete_fleet': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                await axios.delete(`${base}/fleets/${args.fleet_id}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, message: `Fleet ${args.fleet_id} deleted` }, null, 2) }] };
+            }
+            case 'ce_cancel_fleet': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.post(`${base}/fleets/${args.fleet_id}/cancel`, {}, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            // ─── Fleet Tasks ────────────────────────────────────────────────────────────
+            case 'ce_list_fleet_tasks': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/fleets/${args.fleet_id}/tasks`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_get_fleet_task': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/fleets/${args.fleet_id}/tasks/${args.task_id}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            // ─── Fleet Workers ──────────────────────────────────────────────────────────
+            case 'ce_list_fleet_workers': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/fleets/${args.fleet_id}/workers`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_get_fleet_worker': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/fleets/${args.fleet_id}/workers/${args.worker_id}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            // ─── Subnet Pools ────────────────────────────────────────────────────────────
+            case 'ce_list_subnet_pools': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/subnet_pools`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_create_subnet_pool': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const body = { name: args.name, cidr: args.cidr };
+                const response = await axios.post(`${base}/subnet_pools`, body, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_get_subnet_pool': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                const response = await axios.get(`${base}/subnet_pools/${args.subnet_pool_id}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+            }
+            case 'ce_delete_subnet_pool': {
+                const token = await getIAMToken(getApiKey());
+                const { base, headers } = await ceApi(args.project_id, token);
+                await axios.delete(`${base}/subnet_pools/${args.subnet_pool_id}`, { headers });
+                return { content: [{ type: 'text', text: JSON.stringify({ success: true, message: `Subnet pool ${args.subnet_pool_id} deleted` }, null, 2) }] };
             }
             default:
                 throw new Error(`Unknown tool: ${name}`);

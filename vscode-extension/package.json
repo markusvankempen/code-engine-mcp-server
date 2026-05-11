@@ -2,7 +2,7 @@
   "name": "code-engine-mcp",
   "displayName": "IBM Code Engine MCP",
   "description": "Deploy containerised apps to IBM Code Engine using natural language. Registers an MCP server so AI assistants (Copilot, Cline, Cursor) can build images, push to IBM Container Registry, and deploy apps via chat.",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "publisher": "markusvankempen",
   "license": "MIT",
   "repository": {

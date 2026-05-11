@@ -224,6 +224,75 @@ Then rerun `npx @modelcontextprotocol/inspector node build/index.js`.
 
 ---
 
+### App stuck in `no_revision_ready` with `reason: "unknown"`
+
+**Symptom:** `proc_build_push_deploy` (or `ce_wait_for_app_ready`) returns:
+
+```json
+{
+  "status": "failed",
+  "reason": "unknown",
+  "status_details": {
+    "reason": "unknown",
+    "latest_created_revision": "myapp-00001"
+  }
+}
+```
+
+The revision never becomes ready and there are no descriptive error messages.
+
+**Two common root causes** produce identical-looking `reason: "unknown"` failures:
+
+#### Cause A — Stale or expired ICR pull secret
+
+Code Engine cannot pull the container image because the registry pull secret has outdated credentials. This is the most common cause when:
+
+- You haven't deployed in a while (IAM tokens expire)
+- The API key was rotated
+- The secret was created manually or by a previous tool run without refreshing it first
+
+**Fix — use `ce_refresh_icr_pull_secret`:**
+
+```json
+{
+  "tool": "ce_refresh_icr_pull_secret",
+  "arguments": {
+    "project_id": "<your-project-id>",
+    "secret_name": "icr-pull-secret",
+    "icr_host": "us.icr.io"
+  }
+}
+```
+
+This tool uses the server's own `IBMCLOUD_API_KEY` to delete the stale secret and recreate it with fresh credentials — no API key input required. After refreshing, redeploy the app with `ce_update_application` or `proc_build_push_deploy`.
+
+> **Note:** Since version 1.0.8, `proc_build_push_deploy` automatically refreshes the pull secret as step 4.5 before creating or updating the app, so this manual step is only needed for older deployments or when using `ce_create_application` directly.
+
+#### Cause B — nginx port not rewritten (Alpine BusyBox `sed` limitation)
+
+If your Dockerfile rewrites the nginx listen port using a `sed` command with `\s*` or `\s+` (Perl regex escapes), the rewrite silently fails on Alpine Linux because its BusyBox `sed` only supports POSIX regex — **not** Perl escape sequences. nginx stays on port 80, but Code Engine health-checks port 8080, so the revision never passes.
+
+**Symptom inside the container:**
+```bash
+# nginx is listening on 80 instead of 8080
+nginx -T | grep listen   # shows: listen 80
+```
+
+**Fix — use POSIX character class in `sed`:**
+
+```dockerfile
+# WRONG — \s* fails silently on Alpine BusyBox sed
+RUN sed -i 's/listen\s*80;/listen 8080;/g' /etc/nginx/conf.d/default.conf
+
+# CORRECT — POSIX [[:space:]]* works on Alpine
+RUN sed -i 's/listen[[:space:]]*80;/listen 8080;/g' /etc/nginx/conf.d/default.conf \
+ && sed -i 's/listen[[:space:]]*\[::\]:80;/listen [::]:8080;/g' /etc/nginx/conf.d/default.conf
+```
+
+The `proc_validate_dockerfile` tool (and the built-in validator inside `proc_build_push_deploy`) now warn about `\s*` and `\s+` in `sed` patterns that touch the `listen` port line.
+
+---
+
 ## Tips
 
 - Use the inspector's **Copy value** button on any result to paste exact JSON into a GitHub issue.
