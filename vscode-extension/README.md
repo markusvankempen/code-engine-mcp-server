@@ -1,5 +1,9 @@
 # IBM Code Engine MCP — VS Code Extension
 
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp)
+[![Open VSX](https://img.shields.io/badge/Open%20VSX-Registry-C160EF?logo=eclipseide&logoColor=white)](https://open-vsx.org/extension/markusvankempen/code-engine-mcp)
+[![npm](https://img.shields.io/badge/npm-code--engine--mcp--server-CB3837?logo=npm&logoColor=white)](https://www.npmjs.com/package/code-engine-mcp-server)
+
 > **v1.0.7** — Security hardened: no shell access, input validation on all container commands, `ce_refresh_icr_pull_secret` tool, auto-refresh pull secret in `proc_build_push_deploy`, improved setup docs
 
 Deploy containerised apps to **IBM Code Engine** using natural language. This extension wires up the `code-engine-mcp-server` as an [MCP](https://modelcontextprotocol.io) server so any AI assistant running in your IDE (GitHub Copilot, Cline, Cursor, etc.) can build images, push them to IBM Container Registry, and deploy apps — all from a chat prompt.
@@ -125,5 +129,16 @@ npm run compile
 ```
 
 ```bash
-npm run package        # produces code-engine-mcp-1.0.4.vsix
+npm run package        # produces code-engine-mcp-1.0.7.vsix
 ```
+
+---
+
+## Links
+
+| Registry | URL |
+|---|---|
+| **VS Code Marketplace** | [marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp) |
+| **Open VSX** (Cursor / Theia / Gitpod / Codium) | [open-vsx.org/extension/markusvankempen/code-engine-mcp](https://open-vsx.org/extension/markusvankempen/code-engine-mcp) |
+| **npm** (MCP server package) | [npmjs.com/package/code-engine-mcp-server](https://www.npmjs.com/package/code-engine-mcp-server) |
+| **GitHub** | [github.com/markusvankempen/code-engine-mcp-server](https://github.com/markusvankempen/code-engine-mcp-server) |
