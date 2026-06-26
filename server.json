@@ -2,17 +2,17 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.markusvankempen/code-engine-mcp-server",
   "title": "IBM Code Engine MCP Server",
-  "description": "Connect AI assistants to IBM Code Engine for project, app, build, job, and runtime operations.",
+  "description": "Deploy to IBM Code Engine from Cursor, Copilot, Claude & Cline. Build, push, deploy via MCP.",
   "repository": {
     "url": "https://github.com/markusvankempen/code-engine-mcp-server",
     "source": "github"
   },
-  "version": "1.0.6",
+  "version": "1.2.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "code-engine-mcp-server",
-      "version": "1.0.6",
+      "version": "1.2.0",
       "transport": {
         "type": "stdio"
       },

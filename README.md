@@ -1,14 +1,28 @@
-# Code Engine MCP Server
+<!--
+SEO: IBM Code Engine MCP Server | Deploy containers to IBM Cloud Code Engine | MCP · AI Agents · DevOps
+Keywords: code-engine, code-engine-mcp, ibm-code-engine, ibm-cloud, ibm-container-registry, icr, serverless, container-deployment, mcp, mcp-server, model-context-protocol, docker, podman, typescript, vscode-extension, npm-package, npx, stdio
+Also: deploy to code engine, ibm ce mcp, ai deploy containers, copilot mcp server, cursor mcp ibm cloud, claude mcp deployment, github copilot ibm cloud, model context protocol deployment, watsonx orchestrate mcp, code engine ai agent
+-->
 
-![Code Engine MCP Logo](./images/code_engine_mcp_logo.png)
+# IBM Code Engine MCP Server
 
-Model Context Protocol (MCP) server for IBM Code Engine and Docker/Podman integration.
-It enables AI assistants to build, run, push, and deploy containerized workloads with a single MCP server.
+![Code Engine MCP Server — IBM Cloud rocket and container logo](./images/code_engine_mcp_logo.png)
+
+**MCP server for IBM Code Engine — build, push, and deploy containers from Cursor, Copilot, Claude, and Cline using natural language.**
+
+**Search terms:** `code-engine-mcp` · `ibm-code-engine` · `ibm-cloud` · `ibm-container-registry` · `mcp-server` · `model-context-protocol` · `cursor` · `github-copilot` · `claude-desktop` · `cline` · `docker` · `podman` · `serverless` · `container-deployment` · `typescript` · `npx` · `ai-agents` · `devops` · `cloud-native` · `watsonx-orchestrate`
+
+---
+
+**Author:** Markus van Kempen | [markus.van.kempen@gmail.com](mailto:markus.van.kempen@gmail.com) · [markusvankempen.github.io](https://markusvankempen.github.io/)
+*No bug too small, no syntax too weird.*
+
+---
 
 [![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/markusvankempen/code-engine-mcp-server)
 [![IBM Cloud](https://img.shields.io/badge/IBM%20Cloud-Code%20Engine-1261FE)](https://cloud.ibm.com/codeengine/overview)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=nodedotjs&logoColor=white)](#prerequisites)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp)
 [![Open VSX](https://img.shields.io/badge/Open%20VSX-Registry-C160EF?logo=eclipseide&logoColor=white)](https://open-vsx.org/extension/markusvankempen/code-engine-mcp)
 [![npm](https://img.shields.io/badge/npm-code--engine--mcp--server-CB3837?logo=npm&logoColor=white)](https://www.npmjs.com/package/code-engine-mcp-server)
@@ -17,7 +31,7 @@ It enables AI assistants to build, run, push, and deploy containerized workloads
 
 ```mermaid
 flowchart TD
-    A([AI Assistant\nCopilot / Claude / Cline]) -->|MCP JSON-RPC| B[Code Engine MCP Server]
+    A([AI Assistant\nCopilot / Claude / Cline / Bob]) -->|MCP JSON-RPC| B[Code Engine MCP Server]
 
     B --> C{Tool Category}
 
@@ -48,7 +62,7 @@ flowchart TD
 - Container workflow tools for Docker or Podman
 - IBM Container Registry (ICR) tools — list namespaces, list images, delete images
 - IBM Code Engine project and application management tools
-- MCP-ready setup for GitHub Copilot, Cline, Claude Desktop, and the optional VS Code extension in `vscode-extension/`
+- MCP-ready setup for GitHub Copilot, Cline, Bob, Claude Desktop, and the optional VS Code extension in `vscode-extension/`
 - A simple local development and troubleshooting workflow
 
 ## 🚀 Quick Start
@@ -333,6 +347,24 @@ Build it for linux/amd64 as us.icr.io/my-namespace/starwars-splash:v1.0.0,
 push it, then deploy it to Code Engine project <project-id> with pull secret icr-pull-secret.
 Tell me the public URL and confirm the instance is running.
 ```
+
+---
+
+## 🔒 Security & Transport Model
+
+The Code Engine MCP Bridge implements a **Stateless Security Model** and supports the modern **Streamable HTTP** transport standard.
+
+### **Authentication**
+All requests must be authenticated. Credentials are not stored on the server; they must be provided by the client in every request:
+- **Primary (Recommended)**: `Authorization: Bearer <IBMCLOUD_API_KEY>` header.
+- **Legacy**: `?apiKey=<key>` query parameter.
+
+### **Transport Endpoints**
+| Protocol | Method | Endpoint | Description |
+| :--- | :--- | :--- | :--- |
+| **Streamable HTTP** | `POST` | `/sse` | Modern MCP transport. Returns the session endpoint. |
+| **Standard SSE** | `GET` | `/sse` | Legacy EventSource transport. |
+| **Messaging** | `POST` | `/message` | Send JSON-RPC messages (requires `sessionId` query param). |
 
 ---
 
@@ -666,7 +698,7 @@ More detail: [vscode-extension/README.md](./vscode-extension/README.md).
 
 ### Path B — Pure MCP config (no extension)
 
-Use this path with **any** MCP-capable client: GitHub Copilot without the extension, Cline, Claude Desktop, Cursor, etc.
+Use this path with **any** MCP-capable client: GitHub Copilot without the extension, Cline, Bob, Claude Desktop, Cursor, etc.
 
 #### Where to put the API key (choose one approach)
 
@@ -797,6 +829,69 @@ Alternatively, use the **global** MCP config at `~/Library/Application Support/C
   }
 }
 ```
+
+---
+
+#### 3) Bob (VS Code Extension)
+
+Bob uses the same `cline.mcpServers` configuration format:
+
+1. Open VS Code Settings (`Cmd+,`)
+2. Search for **Cline: MCP Settings** → **Edit in settings.json**
+3. Add:
+
+```json
+{
+  "cline.mcpServers": {
+    "code-engine": {
+      "command": "npx",
+      "args": ["-y", "code-engine-mcp-server@latest"],
+      "env": {
+        "IBMCLOUD_API_KEY": "your-api-key-here",
+        "IBMCLOUD_REGION": "us-south"
+      }
+    }
+  }
+}
+```
+
+---
+
+### Path C — Remote Deployment (Stateless Proxy)
+
+You can run the Code Engine MCP server as a **stateless proxy** on IBM Code Engine itself. In this mode, the server **does not store any credentials**. Instead, it extracts the `IBMCLOUD_API_KEY` from each incoming request.
+
+#### 1. Security Model
+The server accepts credentials via:
+- **Authorization Header**: `Authorization: Bearer <your-ibm-cloud-api-key>`
+- **Query Parameter**: `?apiKey=<your-ibm-cloud-api-key>`
+
+#### 2. Client Configuration
+To connect to a remote instance (e.g., `https://ce-mcp-remote.../sse`), use [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) which handles the SSE-to-STDIO bridging and automatically forwards your local `IBMCLOUD_API_KEY` environment variable.
+
+**`mcp.json` / `claude_desktop_config.json`:**
+```json
+{
+  "mcpServers": {
+    "remote-code-engine": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://your-remote-server.appdomain.cloud/sse"
+      ],
+      "env": {
+        "IBMCLOUD_API_KEY": "${env:IBMCLOUD_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+#### 3. Diagnostic Page
+Remote deployments include a built-in diagnostic page at the root URL (e.g., `https://ce-mcp-remote.../`) providing real-time stats, tool counts, and connection health.
+
+---
 
 > Prefer `${env:IBMCLOUD_API_KEY}` if your shell exports the key, so it never appears in `settings.json`.
 
@@ -1077,21 +1172,27 @@ node build/index.js
 
 ## 📄 License
 
-MIT (see `LICENSE`)
+[Apache License 2.0](./LICENSE) · [opensource.org/licenses/Apache-2.0](https://opensource.org/licenses/Apache-2.0)
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request (see [Contributing Guide](./docs/CONTRIBUTING.md)).
-
-## 👤 Author
-
-Markus van Kempen  
-Email: `markus.van.kempen@gmail.com` | `mvankempen@ca.ibm.com`  
-Website: [markusvankempen.github.io](https://markusvankempen.github.io/)  
-Research | Floor 7 1/2
 
 ## 🙋 Support
 
 For issues and questions:
 - Check [Setup Instructions](./docs/SETUP_INSTRUCTIONS.md) and [Code Engine API Reference](./docs/CODE_ENGINE_API_REFERENCE.md)
 - Open an issue in this repository with reproduction steps and logs
+
+---
+
+## Topics & keywords
+
+`code-engine` · `code-engine-mcp` · `code-engine-mcp-server` · `ibm-code-engine` · `ibm-cloud` · `ibm-container-registry` · `icr` · `serverless` · `knative` · `container-deployment` · `cloud-native` · `mcp` · `mcp-server` · `model-context-protocol` · `stdio` · `npx` · `cursor` · `vscode` · `openvscode` · `claude-desktop` · `github-copilot` · `cline` · `bob-ide` · `ai-agent` · `ai-agents` · `tool-calling` · `llm-tools` · `automation` · `typescript` · `nodejs` · `docker` · `podman` · `kubernetes` · `containers` · `deploy` · `devops` · `ci-cd` · `watsonx-orchestrate` · `ibm`
+
+---
+
+**Author:** Markus van Kempen
+**Email:** [markus.van.kempen@gmail.com](mailto:markus.van.kempen@gmail.com) · [mvk@ca.ibm.com](mailto:mvk@ca.ibm.com)
+**Website:** [markusvankempen.github.io](https://markusvankempen.github.io/)
+*No bug too small, no syntax too weird.*

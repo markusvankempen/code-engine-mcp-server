@@ -8,6 +8,17 @@
                 "IBMCLOUD_API_KEY": "your-ibm-cloud-api-key-here",
                 "IBMCLOUD_REGION": "us-south"
             }
+        },
+        "remote-code-engine": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "mcp-remote",
+                "https://your-remote-server.appdomain.cloud/sse"
+            ],
+            "env": {
+                "IBMCLOUD_API_KEY": "${env:IBMCLOUD_API_KEY}"
+            }
         }
     }
 }

@@ -1,8 +1,24 @@
 node_modules/
 .DS_Store
 
-# Packaged VS Code extension (build locally with npm run package)
-vscode-extension/*.vsix
+# Source code lives in the private dev repo only
+src/
+vscode-extension/
+examples/
+__tests__/
+build/
+scripts/
+provenance-addon/
+
+# TypeScript / build config
+tsconfig.json
+tsconfig.test.json
+jest.config.ts
+package.json
+package-lock.json
+mise.toml
+run-client.sh
+test-tools.sh
 
 # Local editor and MCP runtime config
 .vscode/mcp.json
@@ -12,10 +28,23 @@ vscode-extension/*.vsix
 .env.*
 !.env.example
 
-# Keep internal/reference docs local only
+# Internal / api reference docs (local only)
 api/
 internal/
 
 # Local MCP publisher tokens
 .mcpregistry_github_token
 .mcpregistry_registry_token
+
+# VS Code extension VSIX
+*.vsix
+
+# Dev-only files (bridge, Docker, scratch)
+Dockerfile
+.dockerignore
+bridge.mjs
+dot.env.example
+scratch/
+
+# GitHub internal skills
+.github/skills/

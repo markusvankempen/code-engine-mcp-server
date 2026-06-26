@@ -7,6 +7,29 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-10
+
+### Changed
+- **License: ISC/MIT → Apache License 2.0** — all package manifests (`package.json`, `vscode-extension/package.json`, `vscode-extension/server/package.json`), `LICENSE` files, README badges, and npm/MCP Registry fields updated.
+- **npm keywords expanded: 15 → 50** — aligned with GitHub Topics, VS Code Marketplace keywords, and README search terms to improve discovery across GitHub, npmjs.com, and the MCP Registry.
+- **VS Code extension keywords expanded: 15 → 44** — covers all AI client names (Cursor, Copilot, Claude, Cline, Bob), domain terms, and use-case phrases for better Marketplace search ranking.
+- **README SEO** — added 3-line HTML SEO comment (title · Keywords · Also phrases), visible search terms line after pitch, and Topics & keywords footer to both the MCP server README and workspace hub README.
+- **`server.json` description** — rewritten to be keyword-rich and action-oriented within the MCP Registry 100-char limit.
+- **GitHub repository** — description, homepage URL, and 20 GitHub Topics updated to fill all available topic slots.
+
+## [1.1.0] - 2026-05-11
+
+### Changed
+- **Tool reduction: 109 → 67 tools** — removed six unused feature groups to reduce AI context overhead and improve signal-to-noise ratio:
+  - **CE-native Builds** (10 tools): `ce_list_builds`, `ce_create_build`, `ce_get_build`, `ce_delete_build`, `ce_update_build`, `ce_create_build_run`, `ce_list_build_runs`, `ce_get_build_run`, `ce_wait_for_build_run`, `ce_validate_dockerfile`
+  - **CE Functions** (6 tools): `ce_list_function_runtimes`, `ce_list_functions`, `ce_get_function`, `ce_create_function`, `ce_update_function`, `ce_delete_function`
+  - **CE Fleets** (9 tools): `ce_list_fleets`, `ce_create_fleet`, `ce_get_fleet`, `ce_delete_fleet`, `ce_cancel_fleet`, `ce_list_fleet_tasks`, `ce_list_fleet_workers`, `ce_get_fleet_task`, `ce_get_fleet_worker`
+  - **CE Subnet Pools** (4 tools): `ce_list_subnet_pools`, `ce_create_subnet_pool`, `ce_get_subnet_pool`, `ce_delete_subnet_pool`
+  - **CE Persistent Data Stores** (4 tools): `ce_list_persistent_data_stores`, `ce_get_persistent_data_store`, `ce_create_persistent_data_store`, `ce_delete_persistent_data_store`
+  - **CE Allowed Outbound Destinations** (5 tools): `ce_list_allowed_outbound_destinations`, `ce_get_allowed_outbound_destination`, `ce_create_allowed_outbound_destination`, `ce_update_allowed_outbound_destination`, `ce_delete_allowed_outbound_destination`
+  - **proc_build_run_and_deploy** (1 tool): superseded by `proc_build_push_deploy`
+  - All removed tools are preserved in `src/index.ts.bak` for restore if needed.
+
 ## [1.0.7] - 2026-05-10
 
 ### Security
