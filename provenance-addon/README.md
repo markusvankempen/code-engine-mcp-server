@@ -285,23 +285,87 @@ How to use:
 2. Click **Load Receipt JSON Files** and select one or more files from `provenance-addon/receipts/`.
 3. Use the receipt selector to switch across historical traces.
 
+## Failure Model
+
+There are two distinct types of failure. Understanding which one you're looking at is critical for debugging.
+
+### Type 1 — Tool failed, receipt created successfully
+
+The receipt `status` field is `"failed"` and `error_hash` contains a digest of the redacted error. The receipt itself was signed and written normally. This is the intended behavior — the receipt proves: *"at this timestamp, this tool was attempted, and this is what failed."*
+
+How to debug:
+- Read the `error_hash` field to verify the error is consistent.
+- Check the MCP server logs for the full unredacted error using the `trace_ref`.
+- The visualizer error drilldown shows a diagnosed label and suggested fix per error code.
+
+How to fix: address the tool failure (refresh token, fix pull secret, correct the image name, etc.), not the receipt system. A failed receipt is working as designed.
+
+### Type 2 — Receipt creation itself fails (sink error)
+
+The `emitToolCompleted()` wrapper catches the error and returns a null result with a `sinkError` context object. The MCP tool result is never affected.
+
+Common causes:
+
+| Phase | Cause | Symptom |
+|---|---|---|
+| `file_write` | No write permission, EROFS, path too long | Receipt not written to disk |
+| `directory_create` | Disk full (ENOSPC), path doesn't exist | `mkdirSync` throws |
+| `signing` | Node.js < 18 (no ed25519 support), corrupted key | Signature step throws |
+| `canonicalization` | Circular reference in event input/output | `JSON.stringify` throws |
+| `adapter_logic` | Bug in sink implementation | Any other error |
+
+How to debug:
+- The `sinkError` context returned by `emitToolCompleted()` contains:
+  - Full stack trace (`errorStack`)
+  - Which phase failed (`phase`: file_write, signing, canonicalization, directory_create, adapter_logic)
+  - Event context (`eventId`, `toolName`, `targetRef`, `traceRef`)
+  - Timestamp of the failure
+- Pass a custom `logError` function for structured logging or telemetry forwarding.
+- The default logger writes full trace to stderr.
+
+How to fix:
+
+| Phase | Fix |
+|---|---|
+| `file_write` | Check folder permissions: `ls -la provenance-addon/receipts/` |
+| `directory_create` | Check disk space: `df -h`; verify `outDir` path is valid |
+| `signing` | Verify Node.js 18+: `node --version`; verify signer is initialized |
+| `canonicalization` | Ensure event `input`/`output` objects have no circular references |
+| `adapter_logic` | Debug the sink implementation using the stack trace |
+
+### Network dependency model
+
+The current v0.1 PoC is **fully offline** — no network calls anywhere. The failure model changes as the key custody model evolves:
+
+| Stage | Key location | Network needed to sign? | Failure mode if unreachable |
+|---|---|---|---|
+| **v0.1 PoC** | Ephemeral (in-memory) | No | Cannot fail — key is always available |
+| **Persisted local key** | PEM file on disk | No | Cannot fail (unless disk unreadable) |
+| **KMS/HSM-backed** | Cloud KMS (IBM, AWS, Azure) | Yes — HTTPS to KMS API | Signing fails; receipt not created; fail-open |
+| **Centralised receipt store** | Remote API | Yes — HTTPS to receipt service | Writing fails; receipt lost; fail-open |
+
+For KMS or centralised store deployments: ensure the fail-open boundary in `emitToolCompleted()` is never removed. The tool must always succeed regardless of receipt infrastructure availability.
+
 ## Troubleshooting
 
 No receipt file generated:
 
-- Confirm the sink is enabled.
-- Confirm outDir is set.
-- Confirm write permissions for the target folder.
+- Check `sinkError` in the return value of `emitToolCompleted()`.
+- Confirm the sink is enabled (`enabled: true`).
+- Confirm `outDir` is set and writable.
+- Check stderr for `[provenance]` log lines with full error context.
 
 Verification fails unexpectedly:
 
 - Ensure the same signer/public key is used for verification.
 - Ensure claim content was not mutated after signing.
-- Ensure canonical claim is what is signed.
+- Ensure canonical claim is what is signed (`canonicalJson(receipt.claim)`).
+- Note: `createLocalSigner()` generates a new key per process run — receipts from a previous run cannot be verified.
 
 Node errors:
 
-- Check Node version is 18+.
+- Check Node version is 18+ (`node --version`).
+- On Node 12–16, `generateKeyPairSync('ed25519')` may not be available.
 
 ## FAQ
 
