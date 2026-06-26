@@ -7,12 +7,16 @@ __tests__/
 build/
 scripts/
 
-# VS Code extension — only the README is public; source stays in dev repo
+# VS Code extension — README and UI assets are public; source/build stay in dev repo
 vscode-extension/*
 !vscode-extension/README.md
+!vscode-extension/icon.png
+!vscode-extension/images/
 
-# Examples — container demos are public; MCP server source example stays in dev repo
-examples/deploy-mcp-server-to-code-engine/
+# Examples — container demos + supergateway are public
+# deploy-mcp-server-to-code-engine: only README is public, source stays in dev repo
+examples/deploy-mcp-server-to-code-engine/*
+!examples/deploy-mcp-server-to-code-engine/README.md
 
 # provenance-addon — public (docs + tooling)
 # (no exclusion needed — whole folder is public)
@@ -35,9 +39,11 @@ test-tools.sh
 .env.*
 !.env.example
 
-# Internal / api reference docs (local only)
-api/
+# Internal release notes / publishing scripts (local only)
 internal/
+
+# api/ OpenAPI spec is public
+# (no exclusion — api/ folder is tracked)
 
 # Local MCP publisher tokens
 .mcpregistry_github_token
@@ -46,12 +52,11 @@ internal/
 # VS Code extension VSIX
 *.vsix
 
-# Dev-only files (bridge, Docker, scratch)
-Dockerfile
-.dockerignore
+# Dev-only files at root (bridge, Docker, scratch)
+/Dockerfile
+/.dockerignore
 bridge.mjs
 dot.env.example
 scratch/
 
-# GitHub internal skills
-.github/skills/
+# GitHub skills are public (Cursor deploy skill)

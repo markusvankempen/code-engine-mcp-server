@@ -1,0 +1,1156 @@
+openapi: 3.0.0
+info:
+  title: IBM Cloud Code Engine API
+  version: 2.0.0
+  description: |
+    > **Internal reference** — This specification is for development use only.
+    > It is not public product documentation. Do not distribute without authorisation.
+    > Official IBM docs: https://cloud.ibm.com/apidocs/codeengine/v2
+
+    IBM Cloud Code Engine REST API for managing serverless applications, jobs, and builds.
+
+    **Author:** Markus van Kempen | markus.van.kempen@gmail.com | mvankempen@ca.ibm.com
+    https://markusvankempen.github.io/ - No bug too small, no syntax too weird.
+    **Research | Floor 7 1/2**
+
+    **Official Documentation:** https://cloud.ibm.com/apidocs/codeengine/v2
+    
+    This OpenAPI specification documents the Code Engine v2 API endpoints used for:
+    - Managing projects
+    - Deploying applications
+    - Running jobs
+    - Building container images
+    - Managing secrets and configmaps
+    
+  contact:
+    name: Markus van Kempen
+    email: mvankempen@ca.ibm.com
+  license:
+    name: IBM Cloud
+    url: https://cloud.ibm.com/docs/overview/terms-of-use
+
+servers:
+  - url: https://api.us-south.codeengine.cloud.ibm.com/v2
+    description: Dallas (us-south)
+  - url: https://api.us-east.codeengine.cloud.ibm.com/v2
+    description: Washington DC (us-east)
+  - url: https://api.eu-de.codeengine.cloud.ibm.com/v2
+    description: Frankfurt (eu-de)
+  - url: https://api.eu-gb.codeengine.cloud.ibm.com/v2
+    description: London (eu-gb)
+  - url: https://api.jp-tok.codeengine.cloud.ibm.com/v2
+    description: Tokyo (jp-tok)
+  - url: https://api.jp-osa.codeengine.cloud.ibm.com/v2
+    description: Osaka (jp-osa)
+  - url: https://api.au-syd.codeengine.cloud.ibm.com/v2
+    description: Sydney (au-syd)
+  - url: https://api.ca-tor.codeengine.cloud.ibm.com/v2
+    description: Toronto (ca-tor)
+  - url: https://api.br-sao.codeengine.cloud.ibm.com/v2
+    description: São Paulo (br-sao)
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Projects
+    description: Manage Code Engine projects
+  - name: Applications
+    description: Deploy and manage applications
+  - name: Jobs
+    description: Create and run batch jobs
+  - name: Builds
+    description: Build container images
+  - name: Build Runs
+    description: Execute builds
+  - name: Secrets
+    description: Manage secrets
+  - name: ConfigMaps
+    description: Manage configuration data
+
+paths:
+  /projects:
+    get:
+      summary: List projects
+      description: List all Code Engine projects in the region
+      operationId: listProjects
+      tags:
+        - Projects
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of projects to return
+          schema:
+            type: integer
+            default: 100
+            maximum: 200
+        - name: start
+          in: query
+          description: Token for pagination
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    post:
+      summary: Create project
+      description: Create a new Code Engine project
+      operationId: createProject
+      tags:
+        - Projects
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreate'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /projects/{project_id}:
+    get:
+      summary: Get project
+      description: Get details of a specific project
+      operationId: getProject
+      tags:
+        - Projects
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    delete:
+      summary: Delete project
+      description: Delete a Code Engine project
+      operationId: deleteProject
+      tags:
+        - Projects
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '204':
+          description: Project deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{project_id}/apps:
+    get:
+      summary: List applications
+      description: List all applications in a project
+      operationId: listApplications
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: start
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationList'
+    
+    post:
+      summary: Create application
+      description: Create a new application
+      operationId: createApplication
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationCreate'
+      responses:
+        '201':
+          description: Application created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /projects/{project_id}/apps/{app_name}:
+    get:
+      summary: Get application
+      description: Get details of a specific application
+      operationId: getApplication
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/AppName'
+      responses:
+        '200':
+          description: Application details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    patch:
+      summary: Update application
+      description: Update an existing application
+      operationId: updateApplication
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/AppName'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/ApplicationUpdate'
+      responses:
+        '200':
+          description: Application updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    delete:
+      summary: Delete application
+      description: Delete an application
+      operationId: deleteApplication
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/AppName'
+      responses:
+        '204':
+          description: Application deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{project_id}/apps/{app_name}/instances:
+    get:
+      summary: List application instances
+      description: List all instances for an application
+      operationId: listApplicationInstances
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/AppName'
+      responses:
+        '200':
+          description: List of application instances
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceList'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{project_id}/apps/{app_name}/instances/{instance_name}/logs:
+    get:
+      summary: Get application instance logs
+      description: Get logs for a specific application instance
+      operationId: getApplicationInstanceLogs
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/AppName'
+        - $ref: '#/components/parameters/InstanceName'
+      responses:
+        '200':
+          description: Application instance logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceLogs'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{project_id}/builds:
+    get:
+      summary: List builds
+      description: List all build configurations
+      operationId: listBuilds
+      tags:
+        - Builds
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: List of builds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildList'
+    
+    post:
+      summary: Create build
+      description: Create a build configuration
+      operationId: createBuild
+      tags:
+        - Builds
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildCreate'
+      responses:
+        '201':
+          description: Build created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Build'
+
+  /projects/{project_id}/builds/{build_name}:
+    get:
+      summary: Get build
+      description: Get details for a specific build configuration
+      operationId: getBuild
+      tags:
+        - Builds
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/BuildName'
+      responses:
+        '200':
+          description: Build details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Build'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete build
+      description: Delete a build configuration
+      operationId: deleteBuild
+      tags:
+        - Builds
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/BuildName'
+      responses:
+        '204':
+          description: Build deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{project_id}/build_runs:
+    get:
+      summary: List build runs
+      description: List all build runs
+      operationId: listBuildRuns
+      tags:
+        - Build Runs
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: List of build runs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildRunList'
+    
+    post:
+      summary: Create build run
+      description: Start a new build
+      operationId: createBuildRun
+      tags:
+        - Build Runs
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildRunCreate'
+      responses:
+        '201':
+          description: Build run created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildRun'
+
+  /projects/{project_id}/build_runs/{build_run_name}:
+    get:
+      summary: Get build run
+      description: Get status of a build run
+      operationId: getBuildRun
+      tags:
+        - Build Runs
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/BuildRunName'
+      responses:
+        '200':
+          description: Build run details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildRun'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete build run
+      description: Delete a build run
+      operationId: deleteBuildRun
+      tags:
+        - Build Runs
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/BuildRunName'
+      responses:
+        '204':
+          description: Build run deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /projects/{project_id}/build_runs/{build_run_name}/source:
+    put:
+      summary: Upload source code
+      description: Upload source code for a build run
+      operationId: uploadBuildSource
+      tags:
+        - Build Runs
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/BuildRunName'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '204':
+          description: Source uploaded
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /projects/{project_id}/jobs:
+    get:
+      summary: List jobs
+      description: List all jobs
+      operationId: listJobs
+      tags:
+        - Jobs
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobList'
+    
+    post:
+      summary: Create job
+      description: Create a job definition
+      operationId: createJob
+      tags:
+        - Jobs
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+      responses:
+        '201':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+
+  /projects/{project_id}/job_runs:
+    post:
+      summary: Submit job run
+      description: Run a job
+      operationId: createJobRun
+      tags:
+        - Jobs
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobRunCreate'
+      responses:
+        '201':
+          description: Job run created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRun'
+
+  /projects/{project_id}/secrets:
+    get:
+      summary: List secrets
+      description: List all secrets
+      operationId: listSecrets
+      tags:
+        - Secrets
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: List of secrets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SecretList'
+    
+    post:
+      summary: Create secret
+      description: Create a new secret
+      operationId: createSecret
+      tags:
+        - Secrets
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SecretCreate'
+      responses:
+        '201':
+          description: Secret created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Secret'
+
+  /projects/{project_id}/config_maps:
+    get:
+      summary: List configmaps
+      description: List all configmaps
+      operationId: listConfigMaps
+      tags:
+        - ConfigMaps
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: List of configmaps
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigMapList'
+    
+    post:
+      summary: Create configmap
+      description: Create a new configmap
+      operationId: createConfigMap
+      tags:
+        - ConfigMaps
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigMapCreate'
+      responses:
+        '201':
+          description: ConfigMap created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigMap'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        IBM Cloud IAM Bearer token. Obtain from:
+        POST https://iam.cloud.ibm.com/identity/token
+        with API key
+
+  parameters:
+    ProjectId:
+      name: project_id
+      in: path
+      required: true
+      description: The ID of the project
+      schema:
+        type: string
+        pattern: '^[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}$'
+      example: '15314cc3-85b4-4338-903f-c28cdee6d005'
+    
+    AppName:
+      name: app_name
+      in: path
+      required: true
+      description: The name of the application
+      schema:
+        type: string
+        pattern: '^[a-z]([-a-z0-9]*[a-z0-9])?$'
+        maxLength: 63
+      example: 'markus-app-v2'
+
+    BuildName:
+      name: build_name
+      in: path
+      required: true
+      description: The name of the build configuration
+      schema:
+        type: string
+      example: 'my-build'
+
+    BuildRunName:
+      name: build_run_name
+      in: path
+      required: true
+      description: The name of the build run
+      schema:
+        type: string
+      example: 'my-build-run-001'
+
+    InstanceName:
+      name: instance_name
+      in: path
+      required: true
+      description: The name of the application instance
+      schema:
+        type: string
+      example: 'my-app-00001-deployment-abcde'
+
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: Entity tag for optimistic concurrency control
+      schema:
+        type: string
+
+  schemas:
+    ProjectList:
+      type: object
+      properties:
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+        limit:
+          type: integer
+        first:
+          type: object
+        next:
+          type: object
+    
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        region:
+          type: string
+        status:
+          type: string
+          enum: [creating, active, deleting, failed]
+        created_at:
+          type: string
+          format: date-time
+        resource_group_id:
+          type: string
+    
+    ProjectCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          pattern: '^[a-z]([-a-z0-9]*[a-z0-9])?$'
+          maxLength: 63
+        resource_group_id:
+          type: string
+    
+    ApplicationList:
+      type: object
+      properties:
+        apps:
+          type: array
+          items:
+            $ref: '#/components/schemas/Application'
+    
+    Application:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [ready, deploying, failed]
+        image_reference:
+          type: string
+        image_port:
+          type: integer
+        endpoint:
+          type: string
+        scale_min_instances:
+          type: integer
+        scale_max_instances:
+          type: integer
+        scale_cpu_limit:
+          type: string
+        scale_memory_limit:
+          type: string
+        run_env_variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnvVar'
+    
+    ApplicationCreate:
+      type: object
+      required:
+        - name
+        - image_reference
+      properties:
+        name:
+          type: string
+        image_reference:
+          type: string
+        image_port:
+          type: integer
+          default: 8080
+        scale_min_instances:
+          type: integer
+          default: 0
+        scale_max_instances:
+          type: integer
+          default: 10
+        scale_cpu_limit:
+          type: string
+          enum: ['0.125', '0.25', '0.5', '1', '2', '4', '6', '8']
+          default: '1'
+        scale_memory_limit:
+          type: string
+          enum: ['0.25G', '0.5G', '1G', '2G', '4G', '8G', '16G', '32G']
+          default: '4G'
+        run_env_variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnvVar'
+    
+    ApplicationUpdate:
+      type: object
+      properties:
+        image_reference:
+          type: string
+        scale_min_instances:
+          type: integer
+        scale_max_instances:
+          type: integer
+        scale_cpu_limit:
+          type: string
+        scale_memory_limit:
+          type: string
+
+    ApplicationInstanceList:
+      type: object
+      properties:
+        instances:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationInstance'
+
+    ApplicationInstance:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    ApplicationInstanceLogs:
+      type: object
+      properties:
+        logs:
+          type: string
+    
+    EnvVar:
+      type: object
+      required:
+        - type
+        - name
+      properties:
+        type:
+          type: string
+          enum: [literal, secret_key_reference, config_map_key_reference]
+        name:
+          type: string
+        value:
+          type: string
+        reference:
+          type: string
+    
+    BuildList:
+      type: object
+      properties:
+        builds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Build'
+    
+    Build:
+      type: object
+      properties:
+        name:
+          type: string
+        output_image:
+          type: string
+        output_secret:
+          type: string
+        source_type:
+          type: string
+          enum: [local, git]
+        strategy_type:
+          type: string
+          enum: [dockerfile, buildpacks]
+        strategy_spec_file:
+          type: string
+        strategy_size:
+          type: string
+          enum: [small, medium, large, xlarge]
+    
+    BuildCreate:
+      type: object
+      required:
+        - name
+        - output_image
+        - output_secret
+      properties:
+        name:
+          type: string
+        output_image:
+          type: string
+        output_secret:
+          type: string
+        source_type:
+          type: string
+          default: local
+        strategy_type:
+          type: string
+          default: dockerfile
+        strategy_spec_file:
+          type: string
+          default: Dockerfile
+        strategy_size:
+          type: string
+          default: medium
+    
+    BuildRunList:
+      type: object
+      properties:
+        build_runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/BuildRun'
+    
+    BuildRun:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, succeeded, failed]
+        build_name:
+          type: string
+        output_image:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        status_details:
+          type: object
+    
+    BuildRunCreate:
+      type: object
+      required:
+        - build_name
+      properties:
+        build_name:
+          type: string
+        name:
+          type: string
+    
+    JobList:
+      type: object
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
+    
+    Job:
+      type: object
+      properties:
+        name:
+          type: string
+        image_reference:
+          type: string
+        run_mode:
+          type: string
+          enum: [task, daemon]
+        scale_array_spec:
+          type: string
+        scale_cpu_limit:
+          type: string
+        scale_memory_limit:
+          type: string
+    
+    JobCreate:
+      type: object
+      required:
+        - name
+        - image_reference
+      properties:
+        name:
+          type: string
+        image_reference:
+          type: string
+        run_mode:
+          type: string
+          default: task
+        scale_array_spec:
+          type: string
+        scale_cpu_limit:
+          type: string
+        scale_memory_limit:
+          type: string
+    
+    JobRun:
+      type: object
+      properties:
+        name:
+          type: string
+        job_name:
+          type: string
+        status:
+          type: string
+    
+    JobRunCreate:
+      type: object
+      required:
+        - job_name
+      properties:
+        job_name:
+          type: string
+        name:
+          type: string
+    
+    SecretList:
+      type: object
+      properties:
+        secrets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Secret'
+    
+    Secret:
+      type: object
+      properties:
+        name:
+          type: string
+        format:
+          type: string
+          enum: [generic, ssh_auth, basic_auth, tls, service_access, registry]
+        data:
+          type: object
+          additionalProperties:
+            type: string
+    
+    SecretCreate:
+      type: object
+      required:
+        - name
+        - format
+        - data
+      properties:
+        name:
+          type: string
+        format:
+          type: string
+        data:
+          type: object
+          additionalProperties:
+            type: string
+            description: Base64 encoded value
+    
+    ConfigMapList:
+      type: object
+      properties:
+        config_maps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConfigMap'
+    
+    ConfigMap:
+      type: object
+      properties:
+        name:
+          type: string
+        data:
+          type: object
+          additionalProperties:
+            type: string
+    
+    ConfigMapCreate:
+      type: object
+      required:
+        - name
+        - data
+      properties:
+        name:
+          type: string
+        data:
+          type: object
+          additionalProperties:
+            type: string
+    
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        target:
+          type: object
+    
+    ErrorResponse:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Error'
+        trace:
+          type: string
+        status_code:
+          type: integer
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+# Author: Markus van Kempen | markus.van.kempen@gmail.com | mvankempen@ca.ibm.com
