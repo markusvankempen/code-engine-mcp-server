@@ -1,0 +1,23 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "d0944eb9-6ebf-4f54-a672-7c7c39ba5e38",
+    "timestamp": "2026-06-26T20:31:23.000Z",
+    "tool_name": "ce_list_projects",
+    "action_type": "ce_list_projects",
+    "status": "executed",
+    "target_ref": "region:ca-tor",
+    "session_id": "session:chat-a-deploy-20260626-2030",
+    "task_id": "A2-deploy",
+    "input_hash": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "output_hash": "sha256:aeb1b0bc47a8ff2c041dff67bdd7c33fe4c3c6b96066932a9d9851ca6bc0d9c0",
+    "error_hash": null,
+    "trace_ref": "session:chat-a-deploy-20260626-2030",
+    "git_ref": "main@e4f5a6b",
+    "lineage_ref": "workflow:ci-run-4521",
+    "previous_receipt_hash": null
+  },
+  "signature": "C//n+gTF8e1c93+CGrXAEYQii7V8fYi2ImrW9PyXsNxKxbXOqd2Cxu4zaRNbi9u+lQnP1ES9Vd+X4lQVM4z9BQ==",
+  "public_key_id": "sha256:005e9b356511a7cddfed87da525f1ae81c42d2e6be030c5d3893c2c9e42725d0"
+}

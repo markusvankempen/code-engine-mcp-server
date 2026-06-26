@@ -1,0 +1,23 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "d28c775d-3f56-461b-bebe-4f1dbe06401c",
+    "timestamp": "2026-06-26T20:30:55.000Z",
+    "tool_name": "icr_list_images",
+    "action_type": "icr_list_images",
+    "status": "executed",
+    "target_ref": "namespace:mvk-code-engine",
+    "session_id": "session:chat-a-deploy-20260626-2030",
+    "task_id": "A1-build-push",
+    "input_hash": "sha256:0be5ed8d53afa5a47761540a94579ae04f24651898217d68b7efdedc5bfb3f4e",
+    "output_hash": "sha256:31c25cfb64e8b1bb51466c8f810e7a36605283eb7bfcd00282763fbd75b988d3",
+    "error_hash": null,
+    "trace_ref": "session:chat-a-deploy-20260626-2030",
+    "git_ref": "main@e4f5a6b",
+    "lineage_ref": "workflow:ci-run-4521",
+    "previous_receipt_hash": null
+  },
+  "signature": "sXhdlgUuJnHU1VIMXFVW3sAHOiJC+SRlnn3NDrXv2//MMiI63KH5m1Os/IsWbsczGcmY0p7xEVaekynCbn0QCg==",
+  "public_key_id": "sha256:005e9b356511a7cddfed87da525f1ae81c42d2e6be030c5d3893c2c9e42725d0"
+}

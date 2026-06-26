@@ -442,6 +442,8 @@
         actionType: claim.action_type || claim.actionType || '',
         targetRef: claim.target_ref || claim.targetRef || '',
         receiptRole: claim.receipt_role || claim.receiptRole || '',
+        sessionId: claim.session_id || '',
+        taskId: claim.task_id || '',
         traceRef: claim.trace_ref || claim.traceRef || '',
         gitRef: claim.git_ref || claim.gitRef || '',
         lineageRef: claim.lineage_ref || claim.lineageRef || '',
@@ -597,12 +599,20 @@
         `;
       }
 
-      // Trace context — show the AI conversation flow within the same trace
+      // Trace context — show the AI conversation flow within the same session/trace
       let traceHtml = '';
-      if (r.traceRef) {
-        const sameTrace = receipts.filter(t => t.traceRef === r.traceRef);
+      const sessionKey = r.sessionId || r.traceRef;
+      if (sessionKey) {
+        const sameTrace = receipts.filter(t => (t.sessionId || t.traceRef) === sessionKey);
         const posInTrace = sameTrace.findIndex(t => t.eventId === r.eventId);
         const totalInTrace = sameTrace.length;
+
+        // Task grouping within this session
+        const tasksInSession = [...new Set(sameTrace.map(t => t.taskId).filter(Boolean))];
+        const currentTask = r.taskId;
+        const sameTask = currentTask ? sameTrace.filter(t => t.taskId === currentTask) : [];
+        const posInTask = sameTask.findIndex(t => t.eventId === r.eventId);
+        const taskLabel = currentTask ? `Task: ${currentTask} (step ${posInTask + 1} of ${sameTask.length})` : '';
 
         // Before: what led to this call
         const before = sameTrace.slice(Math.max(0, posInTrace - 3), posInTrace);
@@ -646,9 +656,28 @@
           }
         }
 
+        const taskGroupHtml = tasksInSession.length > 1 ? `
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin:6px 0">
+            ${tasksInSession.map(tid => {
+              const isActiveTask = tid === currentTask;
+              const taskReceipts = sameTrace.filter(t => t.taskId === tid);
+              const taskFails = taskReceipts.filter(t => t.status === 'failed').length;
+              const bg = isActiveTask ? 'rgba(167,139,250,.15)' : 'rgba(255,255,255,.04)';
+              const border = isActiveTask ? 'var(--purple)' : 'var(--line2)';
+              const firstInTask = receipts.findIndex(rx => rx.eventId === taskReceipts[0]?.eventId);
+              return `<div style="background:${bg};border:1px solid ${border};border-radius:5px;padding:3px 8px;font-size:9.5px;cursor:pointer" onclick="selectReceipt(${firstInTask})">
+                <span style="color:var(--purple)">${esc(tid)}</span>
+                <span style="color:var(--muted);margin-left:3px">${taskReceipts.length}${taskFails ? ` · <span style='color:#fca5a5'>${taskFails}❌</span>` : ''}</span>
+              </div>`;
+            }).join('')}
+          </div>` : '';
+
         traceHtml = `
           <div class="section-hdr">🧵 Trace Context <span style="font-weight:400;text-transform:none;letter-spacing:0">(${posInTrace + 1} of ${totalInTrace} in this AI session)</span></div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-family:monospace">${esc(r.traceRef)}</div>
+          ${r.sessionId ? `<div style="font-size:10px;color:var(--accent);margin-bottom:2px;font-family:monospace">💬 ${esc(r.sessionId)}</div>` : ''}
+          ${taskLabel ? `<div style="font-size:10px;color:var(--purple);margin-bottom:4px;font-family:monospace">📌 ${esc(taskLabel)}</div>` : ''}
+          ${r.traceRef && r.traceRef !== r.sessionId ? `<div style="font-size:9.5px;color:var(--muted);margin-bottom:4px;font-family:monospace">trace: ${esc(r.traceRef)}</div>` : ''}
+          ${taskGroupHtml}
           ${causeAnalysis}
           ${before.length > 0 ? `<div style="font-size:9px;color:var(--muted);margin:6px 0 2px;text-transform:uppercase;letter-spacing:.05em">Before (what led here)</div>` : ''}
           ${before.map((t, i) => traceStepHtml(t, `step ${posInTrace - before.length + i + 1}`)).join('')}
@@ -675,6 +704,8 @@
           <div class="kv-row"><div class="kv-k">status</div><div class="kv-v ${isFail ? 'err-val' : 'ok-val'}">${esc(r.status)}</div></div>
           <div class="kv-row"><div class="kv-k">target_ref</div><div class="kv-v">${esc(r.targetRef)}</div></div>
           <div class="kv-row"><div class="kv-k">event_id</div><div class="kv-v">${esc(r.eventId)}</div></div>
+          ${r.sessionId ? `<div class="kv-row"><div class="kv-k">session_id</div><div class="kv-v" style="color:var(--accent)">${esc(r.sessionId)}</div></div>` : ''}
+          ${r.taskId ? `<div class="kv-row"><div class="kv-k">task_id</div><div class="kv-v" style="color:var(--purple)">${esc(r.taskId)}</div></div>` : ''}
           ${hasArtifact ? `<div class="kv-row"><div class="kv-k">artifact_hash</div><div class="kv-v hash">${esc(r.artifactHash)}</div></div>` : ''}
           <div class="kv-row"><div class="kv-k">input_hash</div><div class="kv-v hash">${esc(r.inputHash) || '—'}</div></div>
           <div class="kv-row"><div class="kv-k">output_hash</div><div class="kv-v hash">${esc(r.outputHash) || 'null'}</div></div>
@@ -709,53 +740,80 @@
       const tools = [...new Set(receipts.map(r => r.toolName))];
       const failedSteps = receipts.filter(r => r.status === 'failed');
 
-      // Build trace group summaries
-      const traceGroups = traceRefs.map(traceId => {
-        const inTrace = receipts.filter(r => r.traceRef === traceId);
-        const fails = inTrace.filter(r => r.status === 'failed');
-        const first = inTrace[0];
-        const last = inTrace[inTrace.length - 1];
-        return { traceId, count: inTrace.length, fails: fails.length, first, last, receipts: inTrace };
+      // Build session/trace group summaries — prefer session_id over trace_ref
+      const sessionIds = [...new Set(receipts.map(r => r.sessionId || r.traceRef).filter(Boolean))];
+      const traceGroups = sessionIds.map(sid => {
+        const inSession = receipts.filter(r => (r.sessionId || r.traceRef) === sid);
+        const fails = inSession.filter(r => r.status === 'failed');
+        const tasks = [...new Set(inSession.map(r => r.taskId).filter(Boolean))];
+        const first = inSession[0];
+        const last = inSession[inSession.length - 1];
+        return { traceId: sid, count: inSession.length, fails: fails.length, tasks, first, last, receipts: inSession };
       });
 
       const traceGroupsHtml = traceGroups.length > 1 ? `
-        <div class="section-hdr">🧵 AI Chat Sessions (${traceGroups.length} traces)</div>
+        <div class="section-hdr">💬 AI Chat Sessions (${traceGroups.length})</div>
         ${traceGroups.map(g => {
-          const isActiveTrace = selectedIdx >= 0 && receipts[selectedIdx]?.traceRef === g.traceId;
+          const isActiveTrace = selectedIdx >= 0 && (receipts[selectedIdx]?.sessionId || receipts[selectedIdx]?.traceRef) === g.traceId;
           const border = isActiveTrace ? 'var(--accent)' : 'var(--line2)';
           const firstIdx = receipts.findIndex(r => r.eventId === g.first.eventId);
           return `<div style="border:1px solid ${border};border-radius:6px;padding:8px 10px;margin:4px 0;cursor:pointer;background:rgba(56,189,248,.03)" onclick="selectReceipt(${firstIdx})">
             <div style="font-size:10px;color:var(--accent);font-family:monospace;margin-bottom:3px">${esc(short(g.traceId, 38))}</div>
-            <div style="font-size:10.5px;color:var(--text)">${g.count} tool calls · ${g.fails > 0 ? `<span style="color:#fca5a5">${g.fails} failed</span>` : '<span style="color:#86efac">all ok</span>'}</div>
+            <div style="font-size:10.5px;color:var(--text)">${g.count} tool calls · ${g.tasks.length} tasks · ${g.fails > 0 ? `<span style="color:#fca5a5">${g.fails} failed</span>` : '<span style="color:#86efac">all ok</span>'}</div>
             <div style="font-size:9.5px;color:var(--muted);margin-top:2px">${esc(g.first.timestamp?.split('T')[1]?.slice(0,8) ?? '')} → ${esc(g.last.timestamp?.split('T')[1]?.slice(0,8) ?? '')}</div>
+            ${g.tasks.length > 0 ? `<div style="font-size:9px;color:var(--purple);margin-top:3px">${g.tasks.map(t => esc(t)).join(' · ')}</div>` : ''}
           </div>`;
         }).join('')}
       ` : '';
 
-      // For the active trace, show the conversation flow
-      const activeTrace = selectedIdx >= 0 ? receipts[selectedIdx]?.traceRef : null;
-      const activeTraceReceipts = activeTrace ? receipts.filter(r => r.traceRef === activeTrace) : [];
-      const conversationHtml = activeTraceReceipts.length > 1 ? `
-        <div class="section-hdr">💬 Conversation Flow (${activeTraceReceipts.length} calls in active trace)</div>
-        <div style="max-height:220px;overflow-y:auto">
-        ${activeTraceReceipts.map((t, i) => {
-          const isCurrent = t.eventId === (receipts[selectedIdx]?.eventId ?? '');
-          const isErr = t.status === 'failed';
-          const bg = isCurrent ? 'rgba(56,189,248,.1)' : 'transparent';
-          const leftBorder = isCurrent ? '3px solid var(--accent)' : isErr ? '3px solid var(--err)' : '3px solid var(--ok)';
-          const globalIdx = receipts.findIndex(rx => rx.eventId === t.eventId);
-          return `<div style="padding:4px 8px;margin:2px 0;border-left:${leftBorder};background:${bg};cursor:pointer;border-radius:0 4px 4px 0" onclick="selectReceipt(${globalIdx})">
-            <div style="font-size:9px;color:var(--muted)">${i + 1}. ${t.timestamp?.split('T')[1]?.slice(0,8) ?? ''}</div>
-            <div style="font-size:10.5px;color:${isErr ? '#fca5a5' : 'var(--text)'}">${isErr ? '❌' : '✅'} ${esc(short(t.toolName.replace(/^(workspace\.|ce_|build_|push_|iam_)/,''), 26))}</div>
-          </div>`;
-        }).join('')}
+      // For the active session, show the conversation flow
+      const activeSessionKey = selectedIdx >= 0 ? (receipts[selectedIdx]?.sessionId || receipts[selectedIdx]?.traceRef) : (sessionIds[0] || '');
+      const activeSessionReceipts = activeSessionKey ? receipts.filter(r => (r.sessionId || r.traceRef) === activeSessionKey) : [];
+      const activeSessionTasks = [...new Set(activeSessionReceipts.map(r => r.taskId).filter(Boolean))];
+
+      const conversationHtml = activeSessionReceipts.length > 1 ? `
+        <div class="section-hdr">💬 Conversation Flow (${activeSessionReceipts.length} calls, ${activeSessionTasks.length} tasks)</div>
+        <div style="max-height:280px;overflow-y:auto">
+        ${activeSessionTasks.length > 0 ?
+          activeSessionTasks.map(tid => {
+            const taskReceipts = activeSessionReceipts.filter(r => r.taskId === tid);
+            const taskFails = taskReceipts.filter(r => r.status === 'failed').length;
+            return `<div style="margin:8px 0 4px;padding:3px 6px;background:rgba(167,139,250,.08);border-radius:4px;border-left:3px solid var(--purple)">
+              <div style="font-size:9.5px;color:var(--purple);font-weight:600">📌 ${esc(tid)} <span style="color:var(--muted);font-weight:400">(${taskReceipts.length} steps${taskFails ? `, <span style='color:#fca5a5'>${taskFails} ❌</span>` : ''})</span></div>
+            </div>
+            ${taskReceipts.map((t, i) => {
+              const isCurrent = t.eventId === (receipts[selectedIdx]?.eventId ?? '');
+              const isErr = t.status === 'failed';
+              const bg = isCurrent ? 'rgba(56,189,248,.1)' : 'transparent';
+              const leftBorder = isCurrent ? '3px solid var(--accent)' : isErr ? '3px solid var(--err)' : '3px solid var(--ok)';
+              const globalIdx = receipts.findIndex(rx => rx.eventId === t.eventId);
+              return `<div style="padding:3px 8px;margin:1px 0 1px 10px;border-left:${leftBorder};background:${bg};cursor:pointer;border-radius:0 4px 4px 0" onclick="selectReceipt(${globalIdx})">
+                <div style="font-size:9px;color:var(--muted)">${i + 1}. ${t.timestamp?.split('T')[1]?.slice(0,8) ?? ''}</div>
+                <div style="font-size:10.5px;color:${isErr ? '#fca5a5' : 'var(--text)'}">${isErr ? '❌' : '✅'} ${esc(short(t.toolName.replace(/^(workspace\.|ce_|build_|push_|iam_)/,''), 26))}</div>
+              </div>`;
+            }).join('')}`;
+          }).join('')
+        :
+          activeSessionReceipts.map((t, i) => {
+            const isCurrent = t.eventId === (receipts[selectedIdx]?.eventId ?? '');
+            const isErr = t.status === 'failed';
+            const bg = isCurrent ? 'rgba(56,189,248,.1)' : 'transparent';
+            const leftBorder = isCurrent ? '3px solid var(--accent)' : isErr ? '3px solid var(--err)' : '3px solid var(--ok)';
+            const globalIdx = receipts.findIndex(rx => rx.eventId === t.eventId);
+            return `<div style="padding:4px 8px;margin:2px 0;border-left:${leftBorder};background:${bg};cursor:pointer;border-radius:0 4px 4px 0" onclick="selectReceipt(${globalIdx})">
+              <div style="font-size:9px;color:var(--muted)">${i + 1}. ${t.timestamp?.split('T')[1]?.slice(0,8) ?? ''}</div>
+              <div style="font-size:10.5px;color:${isErr ? '#fca5a5' : 'var(--text)'}">${isErr ? '❌' : '✅'} ${esc(short(t.toolName.replace(/^(workspace\.|ce_|build_|push_|iam_)/,''), 26))}</div>
+            </div>`;
+          }).join('')
+        }
         </div>
       ` : '';
 
       content.innerHTML = `
         <div class="session-card">
-          <h3>📋 Session</h3>
-          ${traceRefs.length === 1 ? `<p style="font-family:monospace;font-size:10px">${esc(traceRefs[0])}</p>` : `<p style="color:var(--muted);font-size:10.5px">${traceRefs.length} traces loaded</p>`}
+          <h3>📋 Sessions & Tasks</h3>
+          <p style="font-size:10.5px;color:var(--text)">${sessionIds.length} chat session${sessionIds.length !== 1 ? 's' : ''} · ${[...new Set(receipts.map(r=>r.taskId).filter(Boolean))].length} tasks</p>
+          ${sessionIds.length === 1 ? `<p style="font-family:monospace;font-size:10px;color:var(--accent)">${esc(short(sessionIds[0], 42))}</p>` : ''}
           ${gitRefs.map(g => `<p style="color:var(--muted2);font-size:10.5px">${esc(g)}</p>`).join('')}
         </div>
 

@@ -1,0 +1,23 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "1043f0af-c1ff-4e86-8e5b-8aa9384ea210",
+    "timestamp": "2026-06-26T20:31:34.000Z",
+    "tool_name": "ce_create_application",
+    "action_type": "ce_create_application",
+    "status": "executed",
+    "target_ref": "app:mywebapp@proj-prod-ca-tor-0042",
+    "session_id": "session:chat-a-deploy-20260626-2030",
+    "task_id": "A2-deploy",
+    "input_hash": "sha256:aac4b30cc95121d303afb9ce213d1ea3db721dc29014fb5a5bd0c9e6f5983810",
+    "output_hash": "sha256:570fefe6f6b346121102a6a7871a05a0aefe2eb9c60d93876b67b86673bcd6e0",
+    "error_hash": null,
+    "trace_ref": "session:chat-a-deploy-20260626-2030",
+    "git_ref": "main@e4f5a6b",
+    "lineage_ref": "workflow:ci-run-4521",
+    "previous_receipt_hash": null
+  },
+  "signature": "68Sr6DmpYfZAKA25MwqUJk4BnLtbBhHyiVexlszi37to2QJrv8vPATm0a8LP0Rh6kUDlwYPkF9DFC/0YmO41Cg==",
+  "public_key_id": "sha256:005e9b356511a7cddfed87da525f1ae81c42d2e6be030c5d3893c2c9e42725d0"
+}

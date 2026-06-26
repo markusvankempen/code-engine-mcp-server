@@ -403,6 +403,199 @@ What this does not prove:
 
 If stronger trust is required, anchor receipt hashes in an immutable transparency system and enforce strict trusted-key policy in verifiers.
 
+## Session, Task, and Trace Correlation
+
+### Concept: How Receipts Map to AI Conversations
+
+When an AI chat assistant uses MCP tools, the interaction has a natural hierarchy:
+
+```
+Session (chat thread)
+ └─ Task (one user prompt / AI goal)
+     └─ Step (one MCP tool call → one receipt)
+```
+
+The provenance system captures this hierarchy with three fields:
+
+| Field | Scope | Example |
+|---|---|---|
+| `session_id` | One complete AI conversation thread | `session:chat-deploy-20260626-2030` |
+| `task_id` | One user prompt or AI sub-goal within the session | `A1-build-push` |
+| `trace_ref` | MCP-level operational correlation (often same as session_id) | `session:chat-deploy-20260626-2030` |
+
+### Why This Matters
+
+Without these fields, a flat list of receipts gives no indication of:
+- Which user question caused which tool calls
+- Where the AI made a decision between sub-goals
+- What sequence of reasoning led to a failure
+- Whether two failures are causally related or independent
+
+With session/task IDs, the visualizer can group receipts into a **conversation timeline** and show task boundaries, making root-cause analysis dramatically faster.
+
+### Flow: Multi-Task Session
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant AI as AI Agent
+    participant MCP as MCP Tools
+    participant P as Provenance Sink
+
+    Note over U,P: Session: chat-deploy-20260626
+
+    U->>AI: "Deploy my app to Code Engine"
+    Note over AI: Task A1: Build and push image
+    AI->>MCP: detect_container_runtime
+    MCP->>P: receipt (session_id, task_id=A1)
+    AI->>MCP: build_container_image
+    MCP->>P: receipt (session_id, task_id=A1)
+    AI->>MCP: push_container_image ❌ QUOTA_EXCEEDED
+    MCP->>P: receipt (session_id, task_id=A1, status=failed)
+    Note over AI: AI self-corrects: clean old images, retry
+    AI->>MCP: icr_delete_image
+    MCP->>P: receipt (session_id, task_id=A1)
+    AI->>MCP: push_container_image ✅
+    MCP->>P: receipt (session_id, task_id=A1)
+
+    Note over AI: Task A2: Deploy to CE
+    AI->>MCP: ce_create_application
+    MCP->>P: receipt (session_id, task_id=A2)
+    AI->>MCP: ce_wait_for_app_ready
+    MCP->>P: receipt (session_id, task_id=A2)
+
+    AI->>U: "Done — app is live at https://..."
+```
+
+### Flow: Multi-Session Causality
+
+```mermaid
+flowchart TD
+    subgraph SessionA["Session A: Deploy my app"]
+        A1["Task A1: Build & push"]
+        A2["Task A2: Deploy to CE"]
+        A3["Task A3: Verify live"]
+        A1 --> A2 --> A3
+    end
+
+    subgraph SessionB["Session B: Fix & scale (45 min later)"]
+        B1["Task B1: Diagnose 502"]
+        B2["Task B2: Fix env var & redeploy"]
+        B3["Task B3: Scale to 5"]
+        B1 --> B2 --> B3
+    end
+
+    A3 -.->|"User reports 502"| B1
+    B1 -.->|"Found: DATABASE_URL missing"| B2
+```
+
+### Scenarios and Use Cases
+
+#### Scenario 1: Simple deployment (single task, no errors)
+
+| Session | Task | Steps | Outcome |
+|---|---|---|---|
+| session:chat-quick-deploy | deploy-simple | 4 | All OK |
+
+Flow: validate → build → push → deploy. No failures. Single task_id because the AI treats it as one atomic goal.
+
+#### Scenario 2: Multi-task deployment with self-correction
+
+| Session | Task | Steps | Failures | Recovery |
+|---|---|---|---|---|
+| session:chat-deploy-2030 | A1-build-push | 7 | 1 (ICR quota) | AI deletes old images, retries push |
+| session:chat-deploy-2030 | A2-deploy | 4 | 0 | — |
+| session:chat-deploy-2030 | A3-verify | 1 | 0 | — |
+
+Why task boundaries matter: The AI decided to split "deploy my app" into 3 sub-goals. Seeing that push failed in A1 but the AI recovered (without user intervention) tells an auditor the system is self-correcting.
+
+#### Scenario 3: Cross-session troubleshooting
+
+| Session | Task | Steps | Failures | Recovery |
+|---|---|---|---|---|
+| session:chat-fix-2115 | B1-diagnose | 3 | 0 | Identified missing env var from logs |
+| session:chat-fix-2115 | B2-fix-redeploy | 4 | 1 (quota hit) | AI removes unused var, retries |
+| session:chat-fix-2115 | B3-scale | 2 | 0 | — |
+
+Why cross-session tracking matters: The user opened a new chat 45 minutes after Session A. The receipt trail shows that Session B's diagnostic task **read the same app** that Session A deployed, establishing a causal link between the two sessions.
+
+#### Scenario 4: Concurrent tasks (parallel tool calls)
+
+Some AI agents call multiple tools in parallel. In this case, receipts share the same `task_id` but timestamps overlap:
+
+```
+task_id=parallel-setup, timestamps:
+  12:05:03 → ce_create_secret (completed 12:05:04)
+  12:05:03 → ce_create_configmap (completed 12:05:04)
+  12:05:03 → ce_create_binding (failed 12:05:05, recoverable)
+```
+
+The shared task_id groups them. The visualizer shows overlapping steps in the timeline strip.
+
+### Error Scenarios and Root Causes
+
+#### Error Category: Infrastructure Failures
+
+| Error | Example | Root Cause | Impact on Receipts | Fix |
+|---|---|---|---|---|
+| ICR quota exceeded | `QUOTA_EXCEEDED` | Registry namespace storage limit hit | Receipt captures the failure; AI self-corrects by cleaning old images | Increase quota or remove unused images |
+| IAM token expired | `UNAUTHORIZED` / 401 | Token TTL exceeded mid-deployment | Receipt shows failed push; next receipt shows token refresh | Implement token refresh before expiry; reduce deployment time |
+| Image pull backoff | `ImagePullBackOff` | Pull secret expired or wrong registry | Receipt shows deploy stuck; AI refreshes pull secret | Rotate pull secrets proactively; use secret auto-renewal |
+| Env var quota | `QUOTA_ENV_VARS` | Max environment variables per app reached | Receipt records API 422; AI removes unused vars | Consolidate env vars; use configmaps for bulk config |
+
+#### Error Category: Network/Timeout Failures
+
+| Error | Example | Root Cause | Impact on Receipts | Fix |
+|---|---|---|---|---|
+| Build timeout | `BuildTimeout` | Complex Dockerfile, slow network, large context | Receipt shows build step failed after N seconds | Optimize Dockerfile layers; use multi-stage builds; reduce context |
+| DNS resolution | `ENOTFOUND` | Cluster DNS misconfiguration | Receipt shows connection failed to registry | Check DNS config; verify network policies |
+| TLS handshake | `CERT_EXPIRED` / `UNABLE_TO_VERIFY` | Certificate expired or chain incomplete | Receipt shows push/pull failure | Renew certs; update CA bundles |
+
+#### Error Category: Logical/Configuration Errors
+
+| Error | Example | Root Cause | Impact on Receipts | Fix |
+|---|---|---|---|---|
+| Port mismatch | App expects 3000, CE configured 8080 | `EXPOSE` and app port don't match | App deploys but returns 502; receipt shows deploy "succeeded" | Align Dockerfile EXPOSE and app listen port |
+| Missing health endpoint | No `/health` route | CE health check fails, app killed | Instance shows `CrashLoopBackOff` | Add health endpoint; configure correct health path |
+| Wrong image architecture | Built for arm64, runs on amd64 | Multi-arch mismatch | `exec format error` in container | Build with `--platform linux/amd64` |
+
+#### Error Category: AI Agent Decision Errors
+
+| Error | Example | Root Cause | Impact on Receipts | Fix |
+|---|---|---|---|---|
+| Wrong project selected | Deployed to staging instead of prod | AI selected first project in list | Receipts show `target_ref` pointing to wrong project | Teach AI to confirm project ID with user |
+| Secret in plain text | API key passed as env var value | AI didn't use a CE secret reference | Receipt `input` shows redacted field, but risk exists before redaction | Use `ce_create_secret` then reference `secret:name` |
+| Scale-to-zero in prod | Set `min_instances: 0` | AI chose default cold-start behavior | Receipt shows scale config; app has cold-start latency | Enforce min_instances >= 1 for production |
+
+### Debugging with Session/Task IDs
+
+```bash
+# Find all receipts from a specific chat session
+ls receipts/multi-session-demo/ | head -20
+
+# Find failures in a specific task
+grep -l '"status":"failed"' receipts/multi-session-demo/*.json
+
+# Extract session/task from a receipt
+node -e "
+  const r = JSON.parse(require('fs').readFileSync(process.argv[1]));
+  console.log('session:', r.claim.session_id);
+  console.log('task:', r.claim.task_id);
+  console.log('tool:', r.claim.tool_name);
+  console.log('status:', r.claim.status);
+" receipts/multi-session-demo/<file>.json
+```
+
+### Visualizer: Session/Task Drilldown
+
+The `visualizer.html` provides:
+
+1. **Session grouping** — right panel shows chat sessions as cards with task counts
+2. **Task pills** — in the trace context section, clickable task badges show step counts and failure indicators
+3. **Conversation flow** — task-grouped step list with color-coded borders (green = ok, red = failed, blue = selected)
+4. **Causality analysis** — for failures, shows what happened before (probable cause) and what the AI did next (recovery attempt)
+5. **Cross-session links** — when multiple sessions reference the same `target_ref`, the visualizer notes the relationship
+
 ## Versioning
 
 Current contract target:
@@ -414,6 +607,7 @@ Planned future work may include:
 - Production key custody model
 - Optional receipt chaining strategy for concurrent paths
 - Optional schema validation in CI
+- Session/task_id auto-extraction from MCP transport headers
 
 ## License
 

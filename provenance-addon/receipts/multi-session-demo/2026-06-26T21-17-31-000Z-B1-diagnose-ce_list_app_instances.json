@@ -1,0 +1,23 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "a7b408c4-9dfc-4c59-b9f4-bbf6aa926d07",
+    "timestamp": "2026-06-26T21:17:31.000Z",
+    "tool_name": "ce_list_app_instances",
+    "action_type": "ce_list_app_instances",
+    "status": "executed",
+    "target_ref": "app:mywebapp@proj-prod-ca-tor-0042",
+    "session_id": "session:chat-b-fix-scale-20260626-2115",
+    "task_id": "B1-diagnose",
+    "input_hash": "sha256:b0b75ea8d739a5efeb633a80355b9242fb82939c61012a2e2df102a3faba41b9",
+    "output_hash": "sha256:0e11da6326a6a42637be67602bdde35c088a9ab13fa86165863f3c2f8013cd1e",
+    "error_hash": null,
+    "trace_ref": "session:chat-b-fix-scale-20260626-2115",
+    "git_ref": "main@e4f5a6b",
+    "lineage_ref": "workflow:ci-run-4521",
+    "previous_receipt_hash": null
+  },
+  "signature": "7ZelUjjQVUrb8P9khjbefkbOBpEcAJKWoo5NjcJt4bSXF06zUFq5uBY8zOrKTiFY8t/ULwtgx+H5cdf8U4HcAg==",
+  "public_key_id": "sha256:005e9b356511a7cddfed87da525f1ae81c42d2e6be030c5d3893c2c9e42725d0"
+}

@@ -1,0 +1,24 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "4ba2eab4-e293-4dc2-a579-6b32c56bf19b",
+    "timestamp": "2026-06-26T20:30:43.000Z",
+    "tool_name": "build_container_image",
+    "action_type": "build_container_image",
+    "status": "executed",
+    "target_ref": "image:us.icr.io/mvk-code-engine/mywebapp:v2.1.0",
+    "session_id": "session:chat-a-deploy-20260626-2030",
+    "task_id": "A1-build-push",
+    "artifact_hash": "sha256:8861f6b5c1258227ca06b03b1c0126855af3ff7a008ef058b9275096e221e0be",
+    "input_hash": "sha256:6024f3a0e3c97abdc61f7dc534de70dd2035ec0fcade1896981cfb1e5835b944",
+    "output_hash": "sha256:9e19fe8e72c2dcc4a03f4adf584dddbf34a81f636bf53a48fef20c84bff16b6a",
+    "error_hash": null,
+    "trace_ref": "session:chat-a-deploy-20260626-2030",
+    "git_ref": "main@e4f5a6b",
+    "lineage_ref": "workflow:ci-run-4521",
+    "previous_receipt_hash": null
+  },
+  "signature": "e7hZHF5XudIXPLRRMjubW80n9kFV4TdGAyDvoGTexUXiSFzq/nLW0OdTnShCOOGrvNrQfELmUh8lw0oLifhTCA==",
+  "public_key_id": "sha256:005e9b356511a7cddfed87da525f1ae81c42d2e6be030c5d3893c2c9e42725d0"
+}

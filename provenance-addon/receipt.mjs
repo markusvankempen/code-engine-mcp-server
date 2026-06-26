@@ -31,7 +31,17 @@ import { redact } from './redact.mjs';
  * @property {ReceiptActionType} action_type
  * @property {ReceiptStatus} status
  * @property {string} target_ref
+ * @property {string} [session_id]
+ *   Chat thread / conversation ID. All tool calls within one AI chat session
+ *   share the same session_id. Maps to: "which conversation is this from?"
+ * @property {string} [task_id]
+ *   Sub-task within a session. When a user asks one question and the AI makes
+ *   multiple tool calls to answer it, all those calls share the same task_id.
+ *   A new user prompt or a new AI goal starts a new task_id.
+ *   Maps to: "which part of the conversation caused this call?"
  * @property {string} [trace_ref]
+ *   MCP-level trace/correlation ID for operational log linkage.
+ *   In practice often equals session_id, but may be a lower-level RPC trace.
  * @property {string} [git_ref]
  * @property {string} [lineage_ref]
  * @property {unknown} [input]
@@ -133,6 +143,8 @@ export function buildSignedReceipt(event, signer, opts = {}) {
     status: event.status,
     target_ref: event.target_ref,
   };
+  if (event.session_id !== undefined) claim.session_id = event.session_id;
+  if (event.task_id !== undefined) claim.task_id = event.task_id;
   if (artifactHash !== undefined) claim.artifact_hash = artifactHash;
   if (inputHash !== undefined) claim.input_hash = inputHash;
   claim.output_hash = outputHash;

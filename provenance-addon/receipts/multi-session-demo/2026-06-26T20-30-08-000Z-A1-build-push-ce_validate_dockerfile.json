@@ -1,0 +1,23 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "19f9c7c2-dcfb-47c0-8be7-451ab4bd75ee",
+    "timestamp": "2026-06-26T20:30:08.000Z",
+    "tool_name": "ce_validate_dockerfile",
+    "action_type": "validate_dockerfile",
+    "status": "executed",
+    "target_ref": "path:./Dockerfile",
+    "session_id": "session:chat-a-deploy-20260626-2030",
+    "task_id": "A1-build-push",
+    "input_hash": "sha256:c6f1476938a4a5f72893a1d2a97c67cb9e51329a7e983ac90d4b178f81a64531",
+    "output_hash": "sha256:84edc7f1cd3179b29e2a16431aaa112015e2d5ce7634172552724ef82bb352aa",
+    "error_hash": null,
+    "trace_ref": "session:chat-a-deploy-20260626-2030",
+    "git_ref": "main@e4f5a6b",
+    "lineage_ref": "workflow:ci-run-4521",
+    "previous_receipt_hash": null
+  },
+  "signature": "RrsCdXJP9ZVRJ7YnxQBwVa4qdXhWM5WBo+XhoedSmh5S26s4Tt5F6e23ARGR2ZN/VBUweyMlxW70OXoIhiqBAg==",
+  "public_key_id": "sha256:005e9b356511a7cddfed87da525f1ae81c42d2e6be030c5d3893c2c9e42725d0"
+}

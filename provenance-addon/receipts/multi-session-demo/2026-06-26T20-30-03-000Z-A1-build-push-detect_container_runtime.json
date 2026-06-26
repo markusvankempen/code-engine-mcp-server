@@ -1,0 +1,23 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "6201a7a9-8045-4106-ae0c-15eb1870aefc",
+    "timestamp": "2026-06-26T20:30:03.000Z",
+    "tool_name": "detect_container_runtime",
+    "action_type": "detect_container_runtime",
+    "status": "executed",
+    "target_ref": "runtime:local",
+    "session_id": "session:chat-a-deploy-20260626-2030",
+    "task_id": "A1-build-push",
+    "input_hash": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "output_hash": "sha256:2c3bc71d2f081b816439dcfff3f8aa1dd0a490307da20ab2f9eaeda2748581ce",
+    "error_hash": null,
+    "trace_ref": "session:chat-a-deploy-20260626-2030",
+    "git_ref": "main@e4f5a6b",
+    "lineage_ref": "workflow:ci-run-4521",
+    "previous_receipt_hash": null
+  },
+  "signature": "2sITDzN8B88QdS1yrzFWHImtxSiDwM832IBcNa7PUIMoUtMMcoYR0pMHgNksCcvxRz3Vc6wAmLgrTuaVo/lfBg==",
+  "public_key_id": "sha256:005e9b356511a7cddfed87da525f1ae81c42d2e6be030c5d3893c2c9e42725d0"
+}

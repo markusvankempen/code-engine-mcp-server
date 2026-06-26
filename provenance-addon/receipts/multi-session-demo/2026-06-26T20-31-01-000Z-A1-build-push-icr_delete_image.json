@@ -1,0 +1,23 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "342968e7-8dbe-424d-be66-9b9fa8d7deda",
+    "timestamp": "2026-06-26T20:31:01.000Z",
+    "tool_name": "icr_delete_image",
+    "action_type": "icr_delete_image",
+    "status": "executed",
+    "target_ref": "image:us.icr.io/mvk-code-engine/old-service:v0.1.0",
+    "session_id": "session:chat-a-deploy-20260626-2030",
+    "task_id": "A1-build-push",
+    "input_hash": "sha256:90b5b062a5cc8dbe280ff92c6f59ef2f67f957d6cab6a4b3ed904c4201584eed",
+    "output_hash": "sha256:1b70b1c98c544d975c39049311ab1d24ed1d87aedc2874bdc946d39bd421b4b8",
+    "error_hash": null,
+    "trace_ref": "session:chat-a-deploy-20260626-2030",
+    "git_ref": "main@e4f5a6b",
+    "lineage_ref": "workflow:ci-run-4521",
+    "previous_receipt_hash": null
+  },
+  "signature": "fbCOh1MymBE/KZ44ohz/G+Bnar6nxbxOU5a30NVuzZmjLYoUrQTTjxyoBec94h+FHv8kcLz4jAqOc59mPVVuAA==",
+  "public_key_id": "sha256:005e9b356511a7cddfed87da525f1ae81c42d2e6be030c5d3893c2c9e42725d0"
+}

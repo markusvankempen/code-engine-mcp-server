@@ -1,0 +1,23 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "03e5f80b-fd36-4e31-89e3-590e86d96ddf",
+    "timestamp": "2026-06-26T21:18:22.000Z",
+    "tool_name": "ce_update_application",
+    "action_type": "ce_update_application",
+    "status": "executed",
+    "target_ref": "app:mywebapp@proj-prod-ca-tor-0042",
+    "session_id": "session:chat-b-fix-scale-20260626-2115",
+    "task_id": "B3-scale",
+    "input_hash": "sha256:4b80a9ce89fc3ce4fef63cdab80bbd79b9bcdba1bb2d9378efff0a8068fc8ea5",
+    "output_hash": "sha256:41c5703a163fbbe7b96b7bbbbb3bfa849781aca1f8e25e9eb0f2d829314cc622",
+    "error_hash": null,
+    "trace_ref": "session:chat-b-fix-scale-20260626-2115",
+    "git_ref": "main@e4f5a6b",
+    "lineage_ref": "workflow:ci-run-4521",
+    "previous_receipt_hash": null
+  },
+  "signature": "XdlrvN6h0Tjuty1foHVKH1xxGqHyydAJuVl9Vk/GA2S9baF3vDI9smhO+Wi8l0cjmW/gy6BgSpuFtSARq6zIDg==",
+  "public_key_id": "sha256:005e9b356511a7cddfed87da525f1ae81c42d2e6be030c5d3893c2c9e42725d0"
+}

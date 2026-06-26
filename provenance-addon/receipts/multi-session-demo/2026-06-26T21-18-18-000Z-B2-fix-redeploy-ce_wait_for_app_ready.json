@@ -1,0 +1,23 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "69659f2c-b5f7-44be-a2ff-6a5067189ad0",
+    "timestamp": "2026-06-26T21:18:18.000Z",
+    "tool_name": "ce_wait_for_app_ready",
+    "action_type": "ce_wait_for_app_ready",
+    "status": "executed",
+    "target_ref": "app:mywebapp@proj-prod-ca-tor-0042",
+    "session_id": "session:chat-b-fix-scale-20260626-2115",
+    "task_id": "B2-fix-redeploy",
+    "input_hash": "sha256:22db8769c204385ec75031b5730f1f3cb58fc0dfea45f7f97f900d4de20096b9",
+    "output_hash": "sha256:bc603938890a519633747cc5bbdbd8ce89c3e807bc9f5e220ba8713ba5150551",
+    "error_hash": null,
+    "trace_ref": "session:chat-b-fix-scale-20260626-2115",
+    "git_ref": "main@e4f5a6b",
+    "lineage_ref": "workflow:ci-run-4521",
+    "previous_receipt_hash": null
+  },
+  "signature": "RFX6hVZqOHOAFJ4G8UGZyhZ4QbyLgsJOf4PAd3QQF0+HhfcSJCnmARYZ+x2VSU4HirCbIASCLkdpvlUiIDzZBA==",
+  "public_key_id": "sha256:005e9b356511a7cddfed87da525f1ae81c42d2e6be030c5d3893c2c9e42725d0"
+}
