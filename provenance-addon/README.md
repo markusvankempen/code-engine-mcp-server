@@ -59,6 +59,8 @@ What it does not prove:
   - End-to-end demo with verification and tamper check.
 - package.json
   - ESM and scripts, no external dependencies.
+- visualizer.html
+  - Standalone interactive receipt flow visualizer (browser-based, no dependencies).
 - receipts/
   - Demo output location for generated receipt JSON files.
 - reference-js/
@@ -260,6 +262,25 @@ Open via:
 The visualizer reads receipt JSON files from:
 
 - provenance-addon/receipts/
+
+## Optional Standalone Visualizer (In This Folder)
+
+You can also use the standalone browser visualizer in this folder:
+
+- `provenance-addon/visualizer.html`
+
+What it supports:
+
+- Load multiple receipt JSON files
+- Select and inspect older receipts
+- Color-coded flow steps (success/error)
+- Inline claim/signature/verification snippets for review
+
+How to use:
+
+1. Open `provenance-addon/visualizer.html` in a browser.
+2. Click **Load Receipt JSON Files** and select one or more files from `provenance-addon/receipts/`.
+3. Use the receipt selector to switch across historical traces.
 
 ## Troubleshooting
 

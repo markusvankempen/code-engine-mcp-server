@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Provenance Receipt Visualizer</title>
+    <style>
+      :root {
+        --bg-1: #0f172a;
+        --bg-2: #1e293b;
+        --panel: #0b1220;
+        --panel-soft: #111b2f;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --ok: #22c55e;
+        --warn: #f59e0b;
+        --err: #ef4444;
+        --line: #334155;
+        --accent: #38bdf8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at 20% 0%, #1d4ed8 0%, transparent 35%),
+          radial-gradient(circle at 80% 100%, #0ea5e9 0%, transparent 35%),
+          linear-gradient(180deg, var(--bg-2), var(--bg-1));
+        min-height: 100vh;
+      }
+
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+
+      .header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        font-size: 1.25rem;
+      }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      button,
+      select {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 8px 10px;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: var(--accent);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 12px;
+      }
+
+      .panel {
+        background: linear-gradient(180deg, var(--panel-soft), var(--panel));
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+      }
+
+      .list {
+        max-height: 72vh;
+        overflow: auto;
+      }
+
+      .receipt-item {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        padding: 10px;
+        cursor: pointer;
+        background: rgba(15, 23, 42, 0.45);
+      }
+
+      .receipt-item.active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent) inset;
+      }
+
+      .meta {
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+
+      .status {
+        font-size: 0.82rem;
+        border-radius: 999px;
+        padding: 2px 8px;
+        display: inline-block;
+        margin-left: 8px;
+      }
+
+      .status.executed,
+      .status.valid {
+        background: color-mix(in oklab, var(--ok), transparent 82%);
+        color: #86efac;
+      }
+
+      .status.failed,
+      .status.invalid {
+        background: color-mix(in oklab, var(--err), transparent 82%);
+        color: #fca5a5;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(140px, 1fr));
+        gap: 8px;
+        margin: 12px 0 14px;
+      }
+
+      .step {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        background: rgba(15, 23, 42, 0.4);
+      }
+
+      .step.ok {
+        border-color: color-mix(in oklab, var(--ok), white 20%);
+        box-shadow: 0 0 0 1px color-mix(in oklab, var(--ok), transparent 55%) inset;
+      }
+
+      .step.err {
+        border-color: color-mix(in oklab, var(--err), white 10%);
+        box-shadow: 0 0 0 1px color-mix(in oklab, var(--err), transparent 45%) inset;
+      }
+
+      .step h3 {
+        margin: 0 0 6px;
+        font-size: 0.88rem;
+      }
+
+      .step p {
+        margin: 0;
+        font-size: 0.77rem;
+        color: var(--muted);
+      }
+
+      pre {
+        margin: 8px 0 0;
+        background: #020617;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+        font-size: 0.75rem;
+        overflow: auto;
+        color: #bae6fd;
+      }
+
+      .kv {
+        display: grid;
+        grid-template-columns: 170px 1fr;
+        gap: 6px;
+        margin-top: 8px;
+        font-size: 0.85rem;
+      }
+
+      .kv .k {
+        color: var(--muted);
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+
+      @media (max-width: 980px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .flow {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="header">
+        <h1>Provenance Receipt Visualizer (Standalone)</h1>
+        <div class="controls">
+          <input id="fileInput" type="file" accept="application/json,.json" multiple />
+          <button id="clearBtn" type="button">Clear</button>
+          <select id="receiptSelect"></select>
+        </div>
+      </div>
+
+      <p class="hint">
+        Load one or more receipt JSON files from provenance-addon/receipts. You can switch between older traces from the selector or the list.
+      </p>
+
+      <div class="grid">
+        <section class="panel list" id="receiptList"></section>
+        <section class="panel" id="detailsPanel">
+          <p class="hint">No receipts loaded yet.</p>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById('fileInput');
+      const clearBtn = document.getElementById('clearBtn');
+      const receiptSelect = document.getElementById('receiptSelect');
+      const receiptList = document.getElementById('receiptList');
+      const detailsPanel = document.getElementById('detailsPanel');
+
+      let receipts = [];
+      let selectedIndex = -1;
+
+      const asJson = (v) => JSON.stringify(v, null, 2);
+      const short = (v, n = 36) => (v && String(v).length > n ? String(v).slice(0, n) + '...' : (v ?? 'n/a'));
+
+      function parseReceipt(obj, sourceName) {
+        const claim = obj && obj.claim ? obj.claim : {};
+        return {
+          sourceName,
+          raw: obj,
+          claim,
+          signature: obj.signature || '',
+          publicKeyId: obj.public_key_id || obj.publicKeyId || '',
+          status: claim.status || 'unknown',
+          timestamp: claim.timestamp || 'unknown',
+          eventId: claim.event_id || claim.eventId || 'unknown',
+          toolName: claim.tool_name || claim.toolName || 'unknown',
+          targetRef: claim.target_ref || claim.targetRef || 'unknown',
+          receiptRole: claim.receipt_role || claim.receiptRole || 'unknown'
+        };
+      }
+
+      function renderList() {
+        receiptList.innerHTML = '';
+        receipts.forEach((r, idx) => {
+          const div = document.createElement('div');
+          div.className = 'receipt-item' + (idx === selectedIndex ? ' active' : '');
+          div.innerHTML = `
+            <div><strong>${short(r.toolName, 42)}</strong>
+              <span class="status ${r.status}">${r.status}</span>
+            </div>
+            <div class="meta">${short(r.timestamp, 28)}</div>
+            <div class="meta">${short(r.targetRef, 42)}</div>
+            <div class="meta">${short(r.sourceName, 42)}</div>
+          `;
+          div.addEventListener('click', () => selectReceipt(idx));
+          receiptList.appendChild(div);
+        });
+      }
+
+      function renderSelect() {
+        receiptSelect.innerHTML = '';
+        if (receipts.length === 0) {
+          const opt = document.createElement('option');
+          opt.textContent = 'No receipts loaded';
+          opt.value = '';
+          receiptSelect.appendChild(opt);
+          receiptSelect.disabled = true;
+          return;
+        }
+
+        receiptSelect.disabled = false;
+        receipts.forEach((r, idx) => {
+          const opt = document.createElement('option');
+          opt.value = String(idx);
+          opt.textContent = `${idx + 1}. ${short(r.timestamp, 24)} | ${short(r.toolName, 26)}`;
+          receiptSelect.appendChild(opt);
+        });
+        receiptSelect.value = String(selectedIndex);
+      }
+
+      function flowStepHtml(label, description, state) {
+        const cls = state === 'err' ? 'step err' : 'step ok';
+        return `<article class="${cls}"><h3>${label}</h3><p>${description}</p></article>`;
+      }
+
+      function renderDetails() {
+        if (selectedIndex < 0 || selectedIndex >= receipts.length) {
+          detailsPanel.innerHTML = '<p class="hint">No receipts loaded yet.</p>';
+          return;
+        }
+
+        const r = receipts[selectedIndex];
+        const claim = r.claim || {};
+        const hasSig = Boolean(r.signature);
+        const hasHashes = Boolean(claim.input_hash || claim.output_hash || claim.error_hash);
+        const isFailed = r.status === 'failed';
+
+        detailsPanel.innerHTML = `
+          <div>
+            <strong>${r.toolName}</strong>
+            <span class="status ${r.status}">${r.status}</span>
+            <span class="status ${hasSig ? 'valid' : 'invalid'}">${hasSig ? 'signature-present' : 'signature-missing'}</span>
+          </div>
+
+          <div class="kv">
+            <div class="k">event_id</div><div>${r.eventId}</div>
+            <div class="k">timestamp</div><div>${r.timestamp}</div>
+            <div class="k">target_ref</div><div>${r.targetRef}</div>
+            <div class="k">receipt_role</div><div>${r.receiptRole}</div>
+            <div class="k">public_key_id</div><div>${short(r.publicKeyId, 80)}</div>
+          </div>
+
+          <div class="flow">
+            ${flowStepHtml('1. Tool Completed', 'Post-action boundary captured.', 'ok')}
+            ${flowStepHtml('2. Redact + Hash', hasHashes ? 'input_hash/output_hash/error_hash present.' : 'No hash fields found.', hasHashes ? 'ok' : 'err')}
+            ${flowStepHtml('3. Canonical Claim', 'Snake_case claim fields assembled.', 'ok')}
+            ${flowStepHtml('4. Sign', hasSig ? 'Ed25519 signature is present.' : 'Signature missing.', hasSig ? 'ok' : 'err')}
+            ${flowStepHtml('5. Persist + Verify', isFailed ? 'Tool failed path tracked with error_hash.' : 'Tool executed path tracked with output_hash.', isFailed ? 'err' : 'ok')}
+          </div>
+
+          <div>
+            <strong>Claim snippet</strong>
+            <pre>${asJson({
+              tool_name: claim.tool_name,
+              action_type: claim.action_type,
+              status: claim.status,
+              target_ref: claim.target_ref,
+              input_hash: claim.input_hash,
+              output_hash: claim.output_hash,
+              error_hash: claim.error_hash,
+              trace_ref: claim.trace_ref,
+              git_ref: claim.git_ref,
+              lineage_ref: claim.lineage_ref
+            })}</pre>
+          </div>
+
+          <div>
+            <strong>Signature snippet</strong>
+            <pre>${asJson({
+              public_key_id: r.publicKeyId,
+              signature_preview: short(r.signature, 120)
+            })}</pre>
+          </div>
+
+          <div>
+            <strong>Raw receipt JSON</strong>
+            <pre>${asJson(r.raw)}</pre>
+          </div>
+        `;
+      }
+
+      function selectReceipt(index) {
+        selectedIndex = index;
+        renderSelect();
+        renderList();
+        renderDetails();
+      }
+
+      fileInput.addEventListener('change', async (event) => {
+        const files = Array.from(event.target.files || []);
+        const next = [];
+
+        for (const file of files) {
+          try {
+            const text = await file.text();
+            const parsed = JSON.parse(text);
+            if (!parsed || typeof parsed !== 'object' || !parsed.claim) {
+              continue;
+            }
+            next.push(parseReceipt(parsed, file.name));
+          } catch (_err) {
+            // Ignore non-JSON or malformed files.
+          }
+        }
+
+        receipts = next.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+        selectedIndex = receipts.length > 0 ? 0 : -1;
+        renderSelect();
+        renderList();
+        renderDetails();
+      });
+
+      clearBtn.addEventListener('click', () => {
+        receipts = [];
+        selectedIndex = -1;
+        fileInput.value = '';
+        renderSelect();
+        renderList();
+        renderDetails();
+      });
+
+      receiptSelect.addEventListener('change', (event) => {
+        const idx = Number(event.target.value);
+        if (!Number.isNaN(idx)) {
+          selectReceipt(idx);
+        }
+      });
+
+      renderSelect();
+    </script>
+  </body>
+</html>
