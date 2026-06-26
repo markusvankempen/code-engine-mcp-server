@@ -1,0 +1,41 @@
+{
+  "___last_deployed": "2026-05-10 — markus-app-v2-toronto (ca-tor) — us.icr.io/mvk-code-engine/ce-mcp-remote:latest",
+  "___auth_note___": "Set IBMCLOUD_API_KEY env var in your shell or IDE before loading this config. The bridge reads the key from the Authorization header — it is never stored on the server.",
+
+  "___antigravity_ide___": "Add the block below to your Antigravity mcp_config.json. Antigravity uses 'mcpServers' and 'serverUrl' (camelCase). Set IBMCLOUD_API_KEY in your shell environment.",
+  "mcpServers_antigravity": {
+    "code-engine-remote": {
+      "type": "sse",
+      "serverUrl": "https://ce-mcp-remote.29m5mrru3s3n.ca-tor.codeengine.appdomain.cloud/sse",
+      "headers": {
+        "Authorization": "${env:IBMCLOUD_API_KEY}"
+      }
+    }
+  },
+
+  "___vs_code_mcp_json___": "Add the block below to .vscode/mcp.json or ~/Library/Application Support/Code/User/mcp.json",
+  "servers": {
+    "code-engine-remote": {
+      "type": "sse",
+      "url": "https://ce-mcp-remote.29m5mrru3s3n.ca-tor.codeengine.appdomain.cloud/sse",
+      "headers": {
+        "Authorization": "${env:IBMCLOUD_API_KEY}"
+      }
+    }
+  },
+
+  "___claude_desktop___": "Add the block below to ~/Library/Application Support/Claude/claude_desktop_config.json (macOS)",
+  "mcpServers": {
+    "code-engine-remote": {
+      "transport": {
+        "type": "sse",
+        "url": "https://ce-mcp-remote.29m5mrru3s3n.ca-tor.codeengine.appdomain.cloud/sse",
+        "headers": {
+          "Authorization": "YOUR_IBMCLOUD_API_KEY"
+        }
+      }
+    }
+  },
+
+  "___health_check___": "curl https://ce-mcp-remote.29m5mrru3s3n.ca-tor.codeengine.appdomain.cloud/health"
+}
