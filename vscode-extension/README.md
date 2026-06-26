@@ -4,6 +4,10 @@
 
 Deploy containerised apps to **IBM Code Engine** using natural language. This extension wires up the `code-engine-mcp-server` as an [MCP](https://modelcontextprotocol.io) server so any AI assistant running in your IDE (GitHub Copilot, Cline, Cursor, etc.) can build images, push them to IBM Container Registry, and deploy apps — all from a chat prompt.
 
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp)
+[![Open VSX](https://img.shields.io/badge/Open%20VSX-Registry-C160EF?logo=eclipseide&logoColor=white)](https://open-vsx.org/extension/markusvankempen/code-engine-mcp)
+[![npm](https://img.shields.io/badge/npm-code--engine--mcp--server-CB3837?logo=npm&logoColor=white)](https://www.npmjs.com/package/code-engine-mcp-server)
+
 ---
 
 ## What can it do?
@@ -32,8 +36,11 @@ The assistant calls the MCP tools behind the scenes — no CLI commands to remem
 
 ### 1. Install the extension
 
-Install from the VS Code Marketplace, or from a local VSIX:  
-**Command Palette** → **Extensions: Install from VSIX…**
+| IDE / Platform | Install |
+|---|---|
+| **VS Code** | [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp) |
+| **Cursor / Theia / Gitpod / Codium** | [Open VSX Registry](https://open-vsx.org/extension/markusvankempen/code-engine-mcp) |
+| **Local VSIX** | **Command Palette** → **Extensions: Install from VSIX…** |
 
 ### 2. Enter your API key
 
