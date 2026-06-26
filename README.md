@@ -584,8 +584,7 @@ The same pattern works for any `npx`-runnable MCP server — just swap the `--st
 
 ```text
 code-engine-mcp-server/
-├── api/                              # OpenAPI reference used for API coverage
-├── build/                            # Compiled JavaScript output
+├── build/                            # Compiled JavaScript output (dev repo)
 ├── docs/                             # API references, client guides, community files
 │   ├── API_CALL_SCENARIOS.md
 │   ├── CODE_ENGINE_API_REFERENCE.md

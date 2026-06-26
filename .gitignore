@@ -42,8 +42,8 @@ test-tools.sh
 # Internal release notes / publishing scripts (local only)
 internal/
 
-# api/ OpenAPI spec is public
-# (no exclusion — api/ folder is tracked)
+# OpenAPI spec — dev repo only
+api/
 
 # Local MCP publisher tokens
 .mcpregistry_github_token
