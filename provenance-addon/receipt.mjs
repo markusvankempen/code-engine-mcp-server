@@ -37,6 +37,11 @@ import { redact } from './redact.mjs';
  * @property {unknown} [input]
  * @property {unknown} [output]
  * @property {unknown} [error]
+ * @property {string | Buffer} [artifact_content]
+ *   Raw bytes of the produced file, patch, or scaffold artifact.
+ *   Hashed with hashRaw() BEFORE any redaction; the raw value is never
+ *   placed in the signed claim. Only the resulting `artifact_hash` appears.
+ *   Use this field to bind the receipt to the exact artifact content.
  */
 
 /**
@@ -48,6 +53,11 @@ import { redact } from './redact.mjs';
 
 /**
  * Create a local ed25519 signer. For dev/PoC only — not production key custody.
+ *
+ * WARNING: generates a NEW ephemeral key pair on every call. Receipts signed in
+ * one process run CANNOT be verified in a different process run because the
+ * private key is gone when the process exits. For receipts to be verifiable
+ * across runs, use a persisted key file or a KMS/HSM-backed signer instead.
  * @returns {Signer}
  */
 export function createLocalSigner() {
@@ -83,7 +93,15 @@ export function createLocalSigner() {
  */
 export function buildSignedReceipt(event, signer, opts = {}) {
   const receiptRole = opts.receiptRole ?? 'client_observed';
+  // previous_receipt_hash is reserved for future receipt chaining.
+  // Always null in v0.1 unless the sink explicitly maintains the chain.
   const previousReceiptHash = opts.previousReceiptHash ?? null;
+
+  // artifact_hash: hash the raw artifact content BEFORE redaction so the receipt
+  // binds to the exact file, patch, or scaffold produced. Raw bytes never enter
+  // the claim — only the digest appears. Absent when no artifact_content supplied.
+  const artifactHash =
+    event.artifact_content !== undefined ? hashRaw(event.artifact_content) : undefined;
 
   const redactedInput = event.input === undefined ? undefined : redact(event.input);
   const redactedOutput = event.output === undefined ? undefined : redact(event.output);
@@ -94,6 +112,9 @@ export function buildSignedReceipt(event, signer, opts = {}) {
     event.status === 'executed' && redactedOutput !== undefined
       ? hashCanonical(redactedOutput)
       : null;
+  // error_hash is always present as null on success; output_hash is always
+  // present as null on failure. This is intentional for deterministic canonical
+  // payload shape — verifiers should expect both fields in every claim.
   const errorHash =
     event.status === 'failed' && redactedError !== undefined
       ? hashCanonical(redactedError)
@@ -112,12 +133,14 @@ export function buildSignedReceipt(event, signer, opts = {}) {
     status: event.status,
     target_ref: event.target_ref,
   };
+  if (artifactHash !== undefined) claim.artifact_hash = artifactHash;
   if (inputHash !== undefined) claim.input_hash = inputHash;
   claim.output_hash = outputHash;
   claim.error_hash = errorHash;
   if (event.trace_ref !== undefined) claim.trace_ref = event.trace_ref;
   if (event.git_ref !== undefined) claim.git_ref = event.git_ref;
   if (event.lineage_ref !== undefined) claim.lineage_ref = event.lineage_ref;
+  // Reserved for future receipt chaining. Null in v0.1 unless chain is active.
   claim.previous_receipt_hash = previousReceiptHash;
 
   const signature = signer.sign(canonicalJson(claim));

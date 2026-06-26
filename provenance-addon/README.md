@@ -163,12 +163,13 @@ Common claim fields:
 - action_type
 - status
 - target_ref
-- input_hash
-- output_hash or error_hash
+- artifact_hash (optional) — sha256 of the raw file, patch, or scaffold content, computed **before** redaction; raw bytes never stored in the claim
+- input_hash — sha256 of the canonical redacted input structure (operational context, no secrets)
+- output_hash or error_hash — always present; null when not applicable (intentional for deterministic canonical shape)
 - trace_ref (optional)
 - git_ref (optional)
 - lineage_ref (optional)
-- previous_receipt_hash (optional)
+- previous_receipt_hash — reserved for future receipt chaining; always null in v0.1 unless the sink explicitly maintains the chain
 
 ## Redaction Policy
 
@@ -219,6 +220,8 @@ const event = {
   action_type: 'write_or_modify_file',
   status: 'executed',
   target_ref: 'path:src/index.ts',
+  // artifact_content is hashed into artifact_hash before redaction; raw bytes never stored.
+  artifact_content: 'export function start() { return 42; }\n',
   input: { path: 'src/index.ts', raw_content: '...', api_key: 'secret' },
   output: { bytes_written: 10 },
 };
@@ -244,7 +247,7 @@ Recommended integration behavior:
 
 ## Security and Operations Notes
 
-- createLocalSigner is for local PoC/dev use.
+- `createLocalSigner()` generates a new **ephemeral** Ed25519 key pair on every call. Receipts signed in one process run cannot be verified in a different process run — the private key is gone when the process exits. For cross-run verifiability, use a persisted key file or a KMS/HSM-backed signer.
 - Production key custody should use managed keys/HSM-backed flows.
 - Do not persist raw secrets in receipts.
 - Rotate signing keys based on your org policy.

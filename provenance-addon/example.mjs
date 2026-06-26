@@ -50,6 +50,9 @@ function buildEvent(toolResult) {
     trace_ref: 'trace:rpc-demo-001',
     git_ref: 'main@1a2b3c4',
     lineage_ref: 'ticket:ENG-417',
+    // artifact_content: raw file bytes hashed into artifact_hash BEFORE redaction.
+    // The raw bytes never appear in the signed claim — only the digest does.
+    artifact_content: toolResult.rawContent,
     input: {
       path: 'src/index.ts',
       operation: 'update',
@@ -95,6 +98,10 @@ async function main() {
       claimStr.includes('super-secret-value') ||
       claimStr.includes('export function start');
     console.log('[adapter] secrets/raw content leaked into claim:', leaked);
+
+    // Confirm artifact_hash is present (binds receipt to exact file content).
+    console.log('[adapter] artifact_hash present:', !!res.receipt.claim.artifact_hash);
+    console.log('[adapter] artifact_hash:', res.receipt.claim.artifact_hash);
 
     // Verifier check (outside the runtime): signature must validate.
     const verdict = verifySignedReceipt(res.receipt, signer);
