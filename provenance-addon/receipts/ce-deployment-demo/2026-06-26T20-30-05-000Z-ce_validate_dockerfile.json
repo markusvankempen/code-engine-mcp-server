@@ -1,0 +1,21 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "68b706fd-fa59-4c1d-8e2f-32c5a9151de8",
+    "timestamp": "2026-06-26T20:30:05.000Z",
+    "tool_name": "ce_validate_dockerfile",
+    "action_type": "validate_dockerfile",
+    "status": "executed",
+    "target_ref": "path:examples/developer-splash/Dockerfile",
+    "input_hash": "sha256:81e6661c2ffb333760f7601dddc8471c9ae840d4befde60cec533eda1a6c1b4c",
+    "output_hash": "sha256:84edc7f1cd3179b29e2a16431aaa112015e2d5ce7634172552724ef82bb352aa",
+    "error_hash": null,
+    "trace_ref": "trace:ce-deploy-session-demo-001",
+    "git_ref": "feature/add-splash-app@a1b2c3d",
+    "lineage_ref": "workflow:github-actions-run-9912",
+    "previous_receipt_hash": null
+  },
+  "signature": "kSmMCT43nwD96MImMdr40IrPGu2o2JrfrC3mGGfY9JqMEtJbqL2KDUbtMVGkhHSEyD9w02zNPMZ25LyLdQZgDA==",
+  "public_key_id": "sha256:a99114a68364f6d804c5843038ea04d147b4130cdfcba3e1301864d956278be0"
+}

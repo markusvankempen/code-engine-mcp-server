@@ -11,414 +11,771 @@
         --panel: #0b1220;
         --panel-soft: #111b2f;
         --text: #e2e8f0;
-        --muted: #94a3b8;
+        --muted: #64748b;
+        --muted2: #94a3b8;
         --ok: #22c55e;
+        --ok-dim: #14532d;
         --warn: #f59e0b;
         --err: #ef4444;
-        --line: #334155;
+        --err-dim: #450a0a;
+        --line: #1e3a5f;
+        --line2: #334155;
         --accent: #38bdf8;
+        --accent2: #0ea5e9;
+        --purple: #a78bfa;
       }
-
-      * {
-        box-sizing: border-box;
-      }
-
+      * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
-        margin: 0;
-        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+        font-family: "IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+        font-size: 13px;
         color: var(--text);
-        background: radial-gradient(circle at 20% 0%, #1d4ed8 0%, transparent 35%),
-          radial-gradient(circle at 80% 100%, #0ea5e9 0%, transparent 35%),
-          linear-gradient(180deg, var(--bg-2), var(--bg-1));
+        background: linear-gradient(135deg, #0a1628 0%, #0f172a 50%, #0a1f3a 100%);
         min-height: 100vh;
+        overflow-x: hidden;
       }
 
-      .wrap {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 24px;
-      }
-
+      /* ── HEADER ─────────────────────────────────────────── */
       .header {
+        background: rgba(11,18,32,0.95);
+        border-bottom: 1px solid var(--line);
+        padding: 12px 20px;
         display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
-      }
-
-      h1 {
-        margin: 0;
-        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
-        font-size: 1.25rem;
-      }
-
-      .controls {
-        display: flex;
-        gap: 8px;
+        gap: 12px;
         flex-wrap: wrap;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        backdrop-filter: blur(8px);
       }
-
-      button,
-      select {
+      .header h1 {
+        font-family: "IBM Plex Mono","SFMono-Regular",monospace;
+        font-size: 0.95rem;
+        color: var(--accent);
+        flex: 1;
+        white-space: nowrap;
+      }
+      .header h1 span { color: var(--muted2); font-weight: 400; }
+      .btn {
         background: var(--panel);
         color: var(--text);
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 8px 10px;
-      }
-
-      button {
+        border: 1px solid var(--line2);
+        border-radius: 6px;
+        padding: 6px 12px;
         cursor: pointer;
+        font-size: 12px;
+        white-space: nowrap;
+        transition: border-color .15s, background .15s;
       }
+      .btn:hover { border-color: var(--accent); background: #0f2040; }
+      .btn.primary { border-color: var(--accent2); color: var(--accent); }
+      .btn.danger { border-color: var(--err); color: #fca5a5; }
+      #fileInput { display: none; }
+      label[for="fileInput"] { cursor: pointer; }
 
-      button:hover {
-        border-color: var(--accent);
+      /* ── TIMELINE STRIP ─────────────────────────────────── */
+      #timelineSection {
+        background: rgba(11,18,32,0.8);
+        border-bottom: 1px solid var(--line);
+        padding: 10px 20px;
       }
-
-      .grid {
-        display: grid;
-        grid-template-columns: 280px 1fr;
-        gap: 12px;
-      }
-
-      .panel {
-        background: linear-gradient(180deg, var(--panel-soft), var(--panel));
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 14px;
-      }
-
-      .list {
-        max-height: 72vh;
-        overflow: auto;
-      }
-
-      .receipt-item {
-        border: 1px solid var(--line);
-        border-radius: 8px;
+      .tl-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
         margin-bottom: 8px;
-        padding: 10px;
+      }
+      .tl-title { color: var(--muted2); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+      .tl-controls { display: flex; gap: 6px; margin-left: auto; align-items: center; }
+      .tl-speed { color: var(--muted2); font-size: 11px; }
+      select.small {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--line2);
+        border-radius: 5px;
+        padding: 3px 6px;
+        font-size: 11px;
+      }
+      #timelineTrack {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        min-height: 56px;
+      }
+      .tl-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
         cursor: pointer;
-        background: rgba(15, 23, 42, 0.45);
+        min-width: 72px;
+        flex-shrink: 0;
       }
-
-      .receipt-item.active {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 1px var(--accent) inset;
+      .tl-connector {
+        flex: 1;
+        height: 2px;
+        background: var(--line2);
+        min-width: 8px;
+        max-width: 24px;
+        margin-top: -18px;
       }
-
-      .meta {
-        font-size: 0.82rem;
+      .tl-dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 2px solid var(--line2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        transition: all .2s;
+        background: var(--panel);
+      }
+      .tl-dot.executed { border-color: var(--ok); color: var(--ok); }
+      .tl-dot.failed { border-color: var(--err); color: var(--err); background: var(--err-dim); }
+      .tl-dot.active { box-shadow: 0 0 0 3px rgba(56,189,248,.45); transform: scale(1.2); }
+      .tl-dot.replay-past { opacity: 0.45; }
+      .tl-label {
+        font-size: 9.5px;
         color: var(--muted);
+        text-align: center;
+        max-width: 68px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
+      .tl-label.active { color: var(--accent); }
+      .tl-label.failed { color: #fca5a5; }
 
-      .status {
-        font-size: 0.82rem;
-        border-radius: 999px;
-        padding: 2px 8px;
-        display: inline-block;
-        margin-left: 8px;
-      }
-
-      .status.executed,
-      .status.valid {
-        background: color-mix(in oklab, var(--ok), transparent 82%);
-        color: #86efac;
-      }
-
-      .status.failed,
-      .status.invalid {
-        background: color-mix(in oklab, var(--err), transparent 82%);
-        color: #fca5a5;
-      }
-
-      .flow {
+      /* ── MAIN GRID ──────────────────────────────────────── */
+      .main {
         display: grid;
-        grid-template-columns: repeat(5, minmax(140px, 1fr));
-        gap: 8px;
-        margin: 12px 0 14px;
+        grid-template-columns: 240px 1fr 300px;
+        gap: 0;
+        height: calc(100vh - 110px);
+      }
+      @media (max-width: 1100px) {
+        .main { grid-template-columns: 220px 1fr; }
+        #drillPanel { display: none; }
+      }
+      @media (max-width: 750px) {
+        .main { grid-template-columns: 1fr; height: auto; }
+        #listPanel { max-height: 220px; }
       }
 
-      .step {
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 10px;
-        background: rgba(15, 23, 42, 0.4);
+      /* ── LIST PANEL ─────────────────────────────────────── */
+      #listPanel {
+        border-right: 1px solid var(--line);
+        overflow-y: auto;
+        background: var(--panel);
       }
-
-      .step.ok {
-        border-color: color-mix(in oklab, var(--ok), white 20%);
-        box-shadow: 0 0 0 1px color-mix(in oklab, var(--ok), transparent 55%) inset;
-      }
-
-      .step.err {
-        border-color: color-mix(in oklab, var(--err), white 10%);
-        box-shadow: 0 0 0 1px color-mix(in oklab, var(--err), transparent 45%) inset;
-      }
-
-      .step h3 {
-        margin: 0 0 6px;
-        font-size: 0.88rem;
-      }
-
-      .step p {
-        margin: 0;
-        font-size: 0.77rem;
+      .list-header {
+        padding: 8px 12px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: .06em;
         color: var(--muted);
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        background: var(--panel);
+        z-index: 2;
+      }
+      .receipt-item {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--line);
+        cursor: pointer;
+        transition: background .12s;
+      }
+      .receipt-item:hover { background: #0f2040; }
+      .receipt-item.active { background: #0f2a50; border-left: 3px solid var(--accent); }
+      .receipt-item.active.failed-item { background: #2a0f0f; border-left-color: var(--err); }
+      .ri-tool { font-size: 11px; font-weight: 600; color: var(--text); }
+      .ri-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+      .badge {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 1px 7px;
+        font-size: 9.5px;
+        margin-left: 5px;
+        vertical-align: middle;
+      }
+      .badge.executed { background: rgba(34,197,94,.15); color: #86efac; border: 1px solid rgba(34,197,94,.3); }
+      .badge.failed { background: rgba(239,68,68,.15); color: #fca5a5; border: 1px solid rgba(239,68,68,.3); }
+
+      /* ── DETAIL PANEL ───────────────────────────────────── */
+      #detailPanel {
+        overflow-y: auto;
+        padding: 16px;
+        border-right: 1px solid var(--line);
+      }
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--muted);
+        gap: 8px;
+        text-align: center;
+        padding: 40px;
+      }
+      .empty-icon { font-size: 2.5rem; }
+
+      .detail-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 4px;
+        font-family: "IBM Plex Mono","SFMono-Regular",monospace;
+      }
+      .detail-subtitle { color: var(--muted2); font-size: 11px; margin-bottom: 12px; }
+
+      /* flow pipeline */
+      .pipeline {
+        display: flex;
+        gap: 0;
+        margin: 12px 0;
+        overflow-x: auto;
+      }
+      .pipe-step {
+        flex: 1;
+        min-width: 100px;
+        padding: 8px 10px;
+        border: 1px solid var(--line2);
+        background: rgba(15,23,42,.5);
+        position: relative;
+        text-align: center;
+      }
+      .pipe-step:first-child { border-radius: 8px 0 0 8px; }
+      .pipe-step:last-child { border-radius: 0 8px 8px 0; }
+      .pipe-step.ok { border-color: rgba(34,197,94,.5); background: rgba(34,197,94,.06); }
+      .pipe-step.err { border-color: rgba(239,68,68,.5); background: rgba(239,68,68,.08); }
+      .pipe-step .pipe-icon { font-size: 16px; display: block; margin-bottom: 3px; }
+      .pipe-step .pipe-label { font-size: 9px; color: var(--muted2); text-transform: uppercase; letter-spacing: .05em; }
+      .pipe-step .pipe-detail { font-size: 9.5px; color: var(--muted); margin-top: 3px; }
+      .pipe-arrow {
+        display: flex;
+        align-items: center;
+        color: var(--line2);
+        padding: 0 1px;
+        font-size: 14px;
+        margin-top: -20px;
+      }
+
+      /* kv grid */
+      .kv { margin: 10px 0; }
+      .kv-row { display: grid; grid-template-columns: 130px 1fr; gap: 4px; padding: 3px 0; border-bottom: 1px solid rgba(30,58,95,.4); }
+      .kv-k { color: var(--muted); font-size: 11px; }
+      .kv-v { font-size: 11px; word-break: break-all; font-family: "IBM Plex Mono","SFMono-Regular",monospace; }
+      .kv-v.hash { color: #7dd3fc; font-size: 10px; }
+      .kv-v.ok-val { color: #86efac; }
+      .kv-v.err-val { color: #fca5a5; }
+
+      /* error drilldown */
+      .error-box {
+        background: linear-gradient(135deg, rgba(239,68,68,.12), rgba(239,68,68,.05));
+        border: 1px solid rgba(239,68,68,.4);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin: 12px 0;
+      }
+      .error-box h3 { color: #fca5a5; font-size: 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+      .error-msg { font-family: "IBM Plex Mono","SFMono-Regular",monospace; font-size: 11px; color: #fecaca; background: rgba(0,0,0,.25); padding: 8px; border-radius: 5px; white-space: pre-wrap; word-break: break-word; }
+      .fix-box {
+        background: linear-gradient(135deg, rgba(56,189,248,.1), rgba(56,189,248,.04));
+        border: 1px solid rgba(56,189,248,.3);
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin: 8px 0;
+      }
+      .fix-box h4 { color: var(--accent); font-size: 11px; margin-bottom: 5px; }
+      .fix-box p { color: var(--muted2); font-size: 11px; line-height: 1.5; }
+
+      /* section headers */
+      .section-hdr {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        color: var(--muted);
+        margin: 14px 0 5px;
+        padding-bottom: 3px;
+        border-bottom: 1px solid var(--line);
       }
 
       pre {
-        margin: 8px 0 0;
         background: #020617;
         border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 10px;
-        font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
-        font-size: 0.75rem;
+        border-radius: 6px;
+        padding: 9px;
+        font-family: "IBM Plex Mono","SFMono-Regular",monospace;
+        font-size: 10.5px;
         overflow: auto;
         color: #bae6fd;
+        max-height: 220px;
+        white-space: pre;
       }
+      pre.sm { max-height: 130px; font-size: 10px; }
 
-      .kv {
-        display: grid;
-        grid-template-columns: 170px 1fr;
-        gap: 6px;
-        margin-top: 8px;
-        font-size: 0.85rem;
+      /* ── DRILL PANEL ────────────────────────────────────── */
+      #drillPanel {
+        overflow-y: auto;
+        padding: 14px;
+        background: var(--panel-soft);
       }
-
-      .kv .k {
+      .drill-header {
+        padding: 8px 12px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: .06em;
         color: var(--muted);
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        background: var(--panel-soft);
+        z-index: 2;
       }
-
-      .hint {
-        color: var(--muted);
-        font-size: 0.86rem;
+      .session-card {
+        background: rgba(56,189,248,.07);
+        border: 1px solid rgba(56,189,248,.2);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
       }
-
-      @media (max-width: 980px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
-        .flow {
-          grid-template-columns: 1fr 1fr;
-        }
-      }
+      .session-card h3 { font-size: 11px; color: var(--accent); margin-bottom: 5px; }
+      .session-card p { font-size: 10.5px; color: var(--muted2); line-height: 1.5; }
+      .stat-row { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+      .stat { background: var(--panel); border: 1px solid var(--line2); border-radius: 6px; padding: 5px 10px; text-align: center; flex: 1; min-width: 60px; }
+      .stat .n { font-size: 18px; font-weight: 700; }
+      .stat .l { font-size: 9px; color: var(--muted); text-transform: uppercase; }
+      .stat.ok-stat .n { color: var(--ok); }
+      .stat.err-stat .n { color: var(--err); }
     </style>
   </head>
   <body>
-    <div class="wrap">
-      <div class="header">
-        <h1>Provenance Receipt Visualizer (Standalone)</h1>
-        <div class="controls">
-          <input id="fileInput" type="file" accept="application/json,.json" multiple />
-          <button id="clearBtn" type="button">Clear</button>
-          <select id="receiptSelect"></select>
+
+    <!-- HEADER -->
+    <div class="header">
+      <h1>Provenance Receipt Visualizer <span>v0.1</span></h1>
+      <input id="fileInput" type="file" accept="application/json,.json" multiple />
+      <label for="fileInput" class="btn primary">📂 Load receipts</label>
+      <button id="clearBtn" class="btn danger" type="button">✕ Clear</button>
+    </div>
+
+    <!-- TIMELINE -->
+    <div id="timelineSection">
+      <div class="tl-header">
+        <span class="tl-title">Timeline</span>
+        <div id="tlCount" style="font-size:11px;color:var(--muted)">No receipts loaded — load JSON files from receipts/ or receipts/ce-deployment-demo/</div>
+        <div class="tl-controls" id="tlControls" style="display:none">
+          <button id="replayPrev" class="btn" title="Previous step">◄</button>
+          <button id="replayPlay" class="btn primary" title="Auto-play replay">▶ Replay</button>
+          <button id="replayNext" class="btn" title="Next step">►</button>
+          <span class="tl-speed">Speed</span>
+          <select id="replaySpeed" class="small">
+            <option value="400">Fast</option>
+            <option value="900" selected>Normal</option>
+            <option value="1800">Slow</option>
+          </select>
+        </div>
+      </div>
+      <div id="timelineTrack"></div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main">
+
+      <!-- LEFT: list -->
+      <div id="listPanel">
+        <div class="list-header">Receipts</div>
+        <div id="receiptList"></div>
+      </div>
+
+      <!-- CENTER: detail -->
+      <div id="detailPanel">
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <div>Load receipt JSON files to begin.</div>
+          <div style="font-size:11px;color:var(--muted)">Try loading all files from <code>receipts/ce-deployment-demo/</code></div>
         </div>
       </div>
 
-      <p class="hint">
-        Load one or more receipt JSON files from provenance-addon/receipts. You can switch between older traces from the selector or the list.
-      </p>
-
-      <div class="grid">
-        <section class="panel list" id="receiptList"></section>
-        <section class="panel" id="detailsPanel">
-          <p class="hint">No receipts loaded yet.</p>
-        </section>
+      <!-- RIGHT: drill / session summary -->
+      <div id="drillPanel">
+        <div class="drill-header">Session &amp; Context</div>
+        <div id="drillContent" style="padding:10px">
+          <p style="color:var(--muted);font-size:11px">Session details appear here once receipts are loaded.</p>
+        </div>
       </div>
+
     </div>
 
     <script>
-      const fileInput = document.getElementById('fileInput');
-      const clearBtn = document.getElementById('clearBtn');
-      const receiptSelect = document.getElementById('receiptSelect');
-      const receiptList = document.getElementById('receiptList');
-      const detailsPanel = document.getElementById('detailsPanel');
+    // ── State ─────────────────────────────────────────────────
+    let receipts = [];
+    let selectedIdx = -1;
+    let replayTimer = null;
+    let replayIdx = -1;
+    let isPlaying = false;
 
-      let receipts = [];
-      let selectedIndex = -1;
+    // ── Helpers ───────────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
+    const short = (v, n = 40) => v && String(v).length > n ? String(v).slice(0, n) + '…' : (v ?? 'n/a');
+    const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const asJson = (v) => esc(JSON.stringify(v, null, 2));
+    const hashShort = (h) => h ? String(h).slice(0, 15) + '…' : 'null';
 
-      const asJson = (v) => JSON.stringify(v, null, 2);
-      const short = (v, n = 36) => (v && String(v).length > n ? String(v).slice(0, n) + '...' : (v ?? 'n/a'));
+    function parseReceipt(obj, sourceName) {
+      const claim = (obj && obj.claim) ? obj.claim : {};
+      return {
+        sourceName,
+        raw: obj,
+        claim,
+        signature: obj.signature || '',
+        publicKeyId: obj.public_key_id || obj.publicKeyId || '',
+        status: claim.status || 'unknown',
+        timestamp: claim.timestamp || 'unknown',
+        eventId: claim.event_id || claim.eventId || '',
+        toolName: claim.tool_name || claim.toolName || sourceName,
+        actionType: claim.action_type || claim.actionType || '',
+        targetRef: claim.target_ref || claim.targetRef || '',
+        receiptRole: claim.receipt_role || claim.receiptRole || '',
+        traceRef: claim.trace_ref || claim.traceRef || '',
+        gitRef: claim.git_ref || claim.gitRef || '',
+        lineageRef: claim.lineage_ref || claim.lineageRef || '',
+        artifactHash: claim.artifact_hash || null,
+        inputHash: claim.input_hash || null,
+        outputHash: claim.output_hash || null,
+        errorHash: claim.error_hash || null,
+        prevHash: claim.previous_receipt_hash || null,
+      };
+    }
 
-      function parseReceipt(obj, sourceName) {
-        const claim = obj && obj.claim ? obj.claim : {};
-        return {
-          sourceName,
-          raw: obj,
-          claim,
-          signature: obj.signature || '',
-          publicKeyId: obj.public_key_id || obj.publicKeyId || '',
-          status: claim.status || 'unknown',
-          timestamp: claim.timestamp || 'unknown',
-          eventId: claim.event_id || claim.eventId || 'unknown',
-          toolName: claim.tool_name || claim.toolName || 'unknown',
-          targetRef: claim.target_ref || claim.targetRef || 'unknown',
-          receiptRole: claim.receipt_role || claim.receiptRole || 'unknown'
-        };
+    // ── Error diagnosis ────────────────────────────────────────
+    const ERROR_DIAGNOSIS = {
+      push_container_image: {
+        UNAUTHORIZED: { label: 'ICR Authentication Failed', fix: 'The IAM token used to authenticate to IBM Container Registry has expired or is invalid. The agent should call `iam_get_token_info` to refresh the token, then retry the push.' },
+        default: { label: 'Image Push Failed', fix: 'Check the ICR namespace exists, the image name is correct, and the IBM Cloud API key has push permissions to the namespace.' },
+      },
+      ce_wait_for_app_ready: {
+        IMAGE_PULL_BACKOFF: { label: 'ImagePullBackOff — Registry Pull Secret Mismatch', fix: 'The Code Engine project cannot pull the container image. Most likely cause: the pull secret was created with the wrong registry host, or the API key stored in the secret has expired. Call `ce_refresh_icr_pull_secret` to recreate it with fresh credentials, then call `ce_update_application` to trigger a new revision.' },
+        default: { label: 'Deployment Timed Out', fix: 'The application did not reach "ready" status within the timeout. Check `ce_get_application` for the latest status and `ce_list_app_instances` for container crash loops or OOM events.' },
+      },
+      ce_create_application: {
+        default: { label: 'Application Creation Failed', fix: 'Verify the project ID, image reference, and pull secret name. Check that the region is correct and the project has sufficient quota.' },
+      },
+      build_container_image: {
+        default: { label: 'Container Build Failed', fix: 'Review the Dockerfile for syntax errors. For Code Engine, always use --platform linux/amd64. Run `ce_validate_dockerfile` to check port, nginx sed patterns, and USER directive.' },
+      },
+      default: {
+        default: { label: 'Tool Execution Failed', fix: 'Review the error details above. Check MCP server logs and the trace_ref for the full operational context.' },
+      },
+    };
+
+    function getDiagnosis(actionType, errorCode) {
+      const byAction = ERROR_DIAGNOSIS[actionType] || ERROR_DIAGNOSIS.default;
+      return byAction[errorCode] || byAction.default || ERROR_DIAGNOSIS.default.default;
+    }
+
+    function getErrorCode(r) {
+      const raw = r.raw;
+      if (raw && raw.error && raw.error.code) return raw.error.code;
+      if (r.errorHash && r.sourceName.includes('FAILED')) {
+        if (r.sourceName.includes('push') && r.sourceName.includes('FAILED')) return 'UNAUTHORIZED';
+        if (r.sourceName.includes('wait') && r.sourceName.includes('FAILED')) return 'IMAGE_PULL_BACKOFF';
       }
+      return 'default';
+    }
 
-      function renderList() {
-        receiptList.innerHTML = '';
-        receipts.forEach((r, idx) => {
-          const div = document.createElement('div');
-          div.className = 'receipt-item' + (idx === selectedIndex ? ' active' : '');
-          div.innerHTML = `
-            <div><strong>${short(r.toolName, 42)}</strong>
-              <span class="status ${r.status}">${r.status}</span>
-            </div>
-            <div class="meta">${short(r.timestamp, 28)}</div>
-            <div class="meta">${short(r.targetRef, 42)}</div>
-            <div class="meta">${short(r.sourceName, 42)}</div>
-          `;
-          div.addEventListener('click', () => selectReceipt(idx));
-          receiptList.appendChild(div);
-        });
+    // ── Render: Timeline ───────────────────────────────────────
+    function renderTimeline() {
+      const track = $('timelineTrack');
+      track.innerHTML = '';
+      $('tlControls').style.display = receipts.length ? 'flex' : 'none';
+
+      if (!receipts.length) {
+        $('tlCount').textContent = 'No receipts loaded — load JSON files from receipts/ or receipts/ce-deployment-demo/';
+        return;
       }
+      const fails = receipts.filter(r => r.status === 'failed').length;
+      $('tlCount').textContent = `${receipts.length} receipts  ·  ${receipts.filter(r=>r.status==='executed').length} ✅  ·  ${fails} ❌`;
 
-      function renderSelect() {
-        receiptSelect.innerHTML = '';
-        if (receipts.length === 0) {
-          const opt = document.createElement('option');
-          opt.textContent = 'No receipts loaded';
-          opt.value = '';
-          receiptSelect.appendChild(opt);
-          receiptSelect.disabled = true;
-          return;
+      receipts.forEach((r, i) => {
+        const isPast = isPlaying && i < replayIdx;
+        const isActive = i === (isPlaying ? replayIdx : selectedIdx);
+        const dotClass = [
+          'tl-dot',
+          r.status,
+          isActive ? 'active' : '',
+          isPast ? 'replay-past' : '',
+        ].filter(Boolean).join(' ');
+        const labelClass = ['tl-label', isActive ? 'active' : '', r.status === 'failed' ? 'failed' : ''].filter(Boolean).join(' ');
+        const icon = r.status === 'failed' ? '✕' : String(i + 1);
+
+        const step = document.createElement('div');
+        step.className = 'tl-step';
+        step.innerHTML = `<div class="${dotClass}">${icon}</div><div class="${labelClass}" title="${esc(r.toolName)}">${esc(short(r.toolName.replace(/^(workspace\.|ce_|build_|push_|iam_)/,''), 14))}</div>`;
+        step.addEventListener('click', () => { stopReplay(); selectReceipt(i); });
+        track.appendChild(step);
+
+        if (i < receipts.length - 1) {
+          const conn = document.createElement('div');
+          conn.className = 'tl-connector';
+          track.appendChild(conn);
         }
+      });
+    }
 
-        receiptSelect.disabled = false;
-        receipts.forEach((r, idx) => {
-          const opt = document.createElement('option');
-          opt.value = String(idx);
-          opt.textContent = `${idx + 1}. ${short(r.timestamp, 24)} | ${short(r.toolName, 26)}`;
-          receiptSelect.appendChild(opt);
-        });
-        receiptSelect.value = String(selectedIndex);
+    // ── Render: List ───────────────────────────────────────────
+    function renderList() {
+      const list = $('receiptList');
+      list.innerHTML = '';
+      receipts.forEach((r, i) => {
+        const isFail = r.status === 'failed';
+        const isActive = i === selectedIdx;
+        const div = document.createElement('div');
+        div.className = ['receipt-item', isActive ? 'active' : '', isFail ? 'failed-item' : ''].filter(Boolean).join(' ');
+        div.innerHTML = `
+          <div class="ri-tool">${esc(short(r.toolName, 32))}<span class="badge ${r.status}">${r.status}</span></div>
+          <div class="ri-meta">${esc(short(r.targetRef, 36))}</div>
+          <div class="ri-meta">${esc(short(r.timestamp, 30))}</div>
+        `;
+        div.addEventListener('click', () => { stopReplay(); selectReceipt(i); });
+        list.appendChild(div);
+      });
+    }
+
+    // ── Render: Detail ─────────────────────────────────────────
+    function renderDetail() {
+      const panel = $('detailPanel');
+      if (selectedIdx < 0 || selectedIdx >= receipts.length) {
+        panel.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div>Select a receipt from the list or timeline.</div></div>`;
+        return;
       }
+      const r = receipts[selectedIdx];
+      const claim = r.claim;
+      const isFail = r.status === 'failed';
+      const hasSig = Boolean(r.signature);
+      const hasArtifact = Boolean(r.artifactHash);
 
-      function flowStepHtml(label, description, state) {
-        const cls = state === 'err' ? 'step err' : 'step ok';
-        return `<article class="${cls}"><h3>${label}</h3><p>${description}</p></article>`;
-      }
+      // Pipeline steps
+      const pipeSteps = [
+        { icon: '⚙️', label: 'Tool', detail: r.actionType || r.toolName, ok: true },
+        { icon: '🔒', label: 'Redact', detail: r.inputHash ? hashShort(r.inputHash) : 'no input', ok: Boolean(r.inputHash || r.artifactHash) },
+        { icon: '📐', label: 'Canonical', detail: 'snake_case claim', ok: true },
+        { icon: '✍️', label: 'Sign', detail: hasSig ? 'Ed25519 ✓' : 'missing ✗', ok: hasSig },
+        { icon: isFail ? '⚠️' : '✅', label: 'Outcome', detail: isFail ? 'error_hash' : 'output_hash', ok: !isFail },
+      ];
 
-      function renderDetails() {
-        if (selectedIndex < 0 || selectedIndex >= receipts.length) {
-          detailsPanel.innerHTML = '<p class="hint">No receipts loaded yet.</p>';
-          return;
-        }
+      const pipeHtml = pipeSteps.map((s, i) => `
+        ${i > 0 ? '<div class="pipe-arrow">›</div>' : ''}
+        <div class="pipe-step ${s.ok ? 'ok' : 'err'}">
+          <span class="pipe-icon">${s.icon}</span>
+          <div class="pipe-label">${esc(s.label)}</div>
+          <div class="pipe-detail">${esc(s.detail)}</div>
+        </div>`).join('');
 
-        const r = receipts[selectedIndex];
-        const claim = r.claim || {};
-        const hasSig = Boolean(r.signature);
-        const hasHashes = Boolean(claim.input_hash || claim.output_hash || claim.error_hash);
-        const isFailed = r.status === 'failed';
-
-        detailsPanel.innerHTML = `
-          <div>
-            <strong>${r.toolName}</strong>
-            <span class="status ${r.status}">${r.status}</span>
-            <span class="status ${hasSig ? 'valid' : 'invalid'}">${hasSig ? 'signature-present' : 'signature-missing'}</span>
+      // Error section
+      let errorHtml = '';
+      if (isFail) {
+        const rawErr = r.raw && r.raw.error ? r.raw.error : null;
+        const errMsg = rawErr ? `${rawErr.name || 'Error'}: ${rawErr.message || 'unknown'}` : 'error details redacted before hashing — see error_hash in claim';
+        const errCode = rawErr ? (rawErr.code || 'default') : 'default';
+        const diag = getDiagnosis(r.actionType, errCode);
+        errorHtml = `
+          <div class="section-hdr">⚠️ Error Drilldown</div>
+          <div class="error-box">
+            <h3>🔴 ${esc(diag.label)}</h3>
+            <div class="error-msg">${esc(errMsg)}</div>
           </div>
-
-          <div class="kv">
-            <div class="k">event_id</div><div>${r.eventId}</div>
-            <div class="k">timestamp</div><div>${r.timestamp}</div>
-            <div class="k">target_ref</div><div>${r.targetRef}</div>
-            <div class="k">receipt_role</div><div>${r.receiptRole}</div>
-            <div class="k">public_key_id</div><div>${short(r.publicKeyId, 80)}</div>
-          </div>
-
-          <div class="flow">
-            ${flowStepHtml('1. Tool Completed', 'Post-action boundary captured.', 'ok')}
-            ${flowStepHtml('2. Redact + Hash', hasHashes ? 'input_hash/output_hash/error_hash present.' : 'No hash fields found.', hasHashes ? 'ok' : 'err')}
-            ${flowStepHtml('3. Canonical Claim', 'Snake_case claim fields assembled.', 'ok')}
-            ${flowStepHtml('4. Sign', hasSig ? 'Ed25519 signature is present.' : 'Signature missing.', hasSig ? 'ok' : 'err')}
-            ${flowStepHtml('5. Persist + Verify', isFailed ? 'Tool failed path tracked with error_hash.' : 'Tool executed path tracked with output_hash.', isFailed ? 'err' : 'ok')}
-          </div>
-
-          <div>
-            <strong>Claim snippet</strong>
-            <pre>${asJson({
-              tool_name: claim.tool_name,
-              action_type: claim.action_type,
-              status: claim.status,
-              target_ref: claim.target_ref,
-              input_hash: claim.input_hash,
-              output_hash: claim.output_hash,
-              error_hash: claim.error_hash,
-              trace_ref: claim.trace_ref,
-              git_ref: claim.git_ref,
-              lineage_ref: claim.lineage_ref
-            })}</pre>
-          </div>
-
-          <div>
-            <strong>Signature snippet</strong>
-            <pre>${asJson({
-              public_key_id: r.publicKeyId,
-              signature_preview: short(r.signature, 120)
-            })}</pre>
-          </div>
-
-          <div>
-            <strong>Raw receipt JSON</strong>
-            <pre>${asJson(r.raw)}</pre>
+          <div class="fix-box">
+            <h4>💡 Suggested Fix</h4>
+            <p>${esc(diag.fix)}</p>
           </div>
         `;
       }
 
-      function selectReceipt(index) {
-        selectedIndex = index;
-        renderSelect();
-        renderList();
-        renderDetails();
+      panel.innerHTML = `
+        <div class="detail-title">${esc(r.toolName)}</div>
+        <div class="detail-subtitle">${esc(r.timestamp)} · ${esc(r.receiptRole)}</div>
+
+        <div class="pipeline">${pipeHtml}</div>
+
+        ${errorHtml}
+
+        <div class="section-hdr">Claim Fields</div>
+        <div class="kv">
+          <div class="kv-row"><div class="kv-k">action_type</div><div class="kv-v">${esc(r.actionType)}</div></div>
+          <div class="kv-row"><div class="kv-k">status</div><div class="kv-v ${isFail ? 'err-val' : 'ok-val'}">${esc(r.status)}</div></div>
+          <div class="kv-row"><div class="kv-k">target_ref</div><div class="kv-v">${esc(r.targetRef)}</div></div>
+          <div class="kv-row"><div class="kv-k">event_id</div><div class="kv-v">${esc(r.eventId)}</div></div>
+          ${hasArtifact ? `<div class="kv-row"><div class="kv-k">artifact_hash</div><div class="kv-v hash">${esc(r.artifactHash)}</div></div>` : ''}
+          <div class="kv-row"><div class="kv-k">input_hash</div><div class="kv-v hash">${esc(r.inputHash) || '—'}</div></div>
+          <div class="kv-row"><div class="kv-k">output_hash</div><div class="kv-v hash">${esc(r.outputHash) || 'null'}</div></div>
+          <div class="kv-row"><div class="kv-k">error_hash</div><div class="kv-v hash ${isFail ? 'err-val' : ''}">${esc(r.errorHash) || 'null'}</div></div>
+          <div class="kv-row"><div class="kv-k">trace_ref</div><div class="kv-v">${esc(r.traceRef) || '—'}</div></div>
+          <div class="kv-row"><div class="kv-k">git_ref</div><div class="kv-v">${esc(r.gitRef) || '—'}</div></div>
+          <div class="kv-row"><div class="kv-k">lineage_ref</div><div class="kv-v">${esc(r.lineageRef) || '—'}</div></div>
+          <div class="kv-row"><div class="kv-k">prev_receipt_hash</div><div class="kv-v hash">${esc(r.prevHash) || 'null (reserved v0.1)'}</div></div>
+          <div class="kv-row"><div class="kv-k">public_key_id</div><div class="kv-v hash">${esc(r.publicKeyId)}</div></div>
+        </div>
+
+        <div class="section-hdr">Signed Claim JSON</div>
+        <pre>${asJson(claim)}</pre>
+
+        <div class="section-hdr">Raw Receipt</div>
+        <pre class="sm">${asJson(r.raw)}</pre>
+      `;
+    }
+
+    // ── Render: Drill / Session ────────────────────────────────
+    function renderDrill() {
+      const content = $('drillContent');
+      if (!receipts.length) {
+        content.innerHTML = '<p style="color:var(--muted);font-size:11px">Session details appear here once receipts are loaded.</p>';
+        return;
       }
+      const total = receipts.length;
+      const okCount = receipts.filter(r => r.status === 'executed').length;
+      const failCount = receipts.filter(r => r.status === 'failed').length;
+      const traceRefs = [...new Set(receipts.map(r => r.traceRef).filter(Boolean))];
+      const gitRefs = [...new Set(receipts.map(r => r.gitRef).filter(Boolean))];
+      const tools = [...new Set(receipts.map(r => r.toolName))];
+      const failedSteps = receipts.filter(r => r.status === 'failed');
 
-      fileInput.addEventListener('change', async (event) => {
-        const files = Array.from(event.target.files || []);
-        const next = [];
+      content.innerHTML = `
+        <div class="session-card">
+          <h3>📋 Session</h3>
+          ${traceRefs.map(t => `<p>${esc(t)}</p>`).join('') || '<p style="color:var(--muted)">No trace_ref</p>'}
+          ${gitRefs.map(g => `<p style="color:var(--muted2)">${esc(g)}</p>`).join('')}
+        </div>
 
-        for (const file of files) {
-          try {
-            const text = await file.text();
-            const parsed = JSON.parse(text);
-            if (!parsed || typeof parsed !== 'object' || !parsed.claim) {
-              continue;
-            }
-            next.push(parseReceipt(parsed, file.name));
-          } catch (_err) {
-            // Ignore non-JSON or malformed files.
-          }
+        <div class="stat-row">
+          <div class="stat"><div class="n">${total}</div><div class="l">Total</div></div>
+          <div class="stat ok-stat"><div class="n">${okCount}</div><div class="l">OK</div></div>
+          <div class="stat err-stat"><div class="n">${failCount}</div><div class="l">Failed</div></div>
+        </div>
+
+        ${failCount > 0 ? `
+        <div class="section-hdr">Failures</div>
+        ${failedSteps.map(r => {
+          const code = getErrorCode(r);
+          const diag = getDiagnosis(r.actionType, code);
+          return `<div class="error-box" style="cursor:pointer" onclick="selectByEventId('${esc(r.eventId)}')">
+            <h3 style="font-size:11px">🔴 ${esc(short(r.toolName,30))}</h3>
+            <p style="font-size:10.5px;color:#fca5a5">${esc(diag.label)}</p>
+          </div>`;
+        }).join('')}
+        ` : `<div class="fix-box"><h4>✅ All steps succeeded</h4><p>No failures detected in this session.</p></div>`}
+
+        <div class="section-hdr">Tools Used (${tools.length})</div>
+        ${tools.map(t => `<div style="font-size:10.5px;color:var(--muted2);padding:2px 0;font-family:monospace">${esc(t)}</div>`).join('')}
+      `;
+    }
+
+    // ── Select ─────────────────────────────────────────────────
+    function selectReceipt(idx) {
+      selectedIdx = idx;
+      renderList();
+      renderTimeline();
+      renderDetail();
+      renderDrill();
+    }
+
+    window.selectByEventId = function(eid) {
+      const idx = receipts.findIndex(r => r.eventId === eid);
+      if (idx >= 0) selectReceipt(idx);
+    };
+
+    // ── Replay ─────────────────────────────────────────────────
+    function stopReplay() {
+      if (replayTimer) { clearTimeout(replayTimer); replayTimer = null; }
+      isPlaying = false;
+      $('replayPlay').textContent = '▶ Replay';
+      renderTimeline();
+    }
+
+    function stepReplay(idx) {
+      replayIdx = idx;
+      selectedIdx = idx;
+      renderTimeline();
+      renderList();
+      renderDetail();
+      renderDrill();
+    }
+
+    function startReplay() {
+      if (!receipts.length) return;
+      isPlaying = true;
+      $('replayPlay').textContent = '⏹ Stop';
+      replayIdx = 0;
+      const delay = Number($('replaySpeed').value) || 900;
+
+      function tick() {
+        stepReplay(replayIdx);
+        if (replayIdx < receipts.length - 1) {
+          replayIdx++;
+          replayTimer = setTimeout(tick, delay);
+        } else {
+          isPlaying = false;
+          $('replayPlay').textContent = '▶ Replay';
         }
+      }
+      tick();
+    }
 
-        receipts = next.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
-        selectedIndex = receipts.length > 0 ? 0 : -1;
-        renderSelect();
-        renderList();
-        renderDetails();
-      });
+    $('replayPlay').addEventListener('click', () => {
+      if (isPlaying) { stopReplay(); } else { startReplay(); }
+    });
+    $('replayPrev').addEventListener('click', () => {
+      stopReplay();
+      if (selectedIdx > 0) selectReceipt(selectedIdx - 1);
+    });
+    $('replayNext').addEventListener('click', () => {
+      stopReplay();
+      if (selectedIdx < receipts.length - 1) selectReceipt(selectedIdx + 1);
+    });
 
-      clearBtn.addEventListener('click', () => {
-        receipts = [];
-        selectedIndex = -1;
-        fileInput.value = '';
-        renderSelect();
-        renderList();
-        renderDetails();
-      });
+    // ── Load files ─────────────────────────────────────────────
+    $('fileInput').addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      const next = [];
+      for (const file of files) {
+        if (file.name.startsWith('_')) continue; // skip _session.json manifest
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          if (!parsed || typeof parsed !== 'object' || !parsed.claim) continue;
+          next.push(parseReceipt(parsed, file.name));
+        } catch { /* skip invalid */ }
+      }
+      receipts = next.sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)));
+      selectedIdx = receipts.length > 0 ? 0 : -1;
+      replayIdx = -1;
+      isPlaying = false;
+      renderTimeline();
+      renderList();
+      renderDetail();
+      renderDrill();
+    });
 
-      receiptSelect.addEventListener('change', (event) => {
-        const idx = Number(event.target.value);
-        if (!Number.isNaN(idx)) {
-          selectReceipt(idx);
-        }
-      });
+    $('clearBtn').addEventListener('click', () => {
+      stopReplay();
+      receipts = [];
+      selectedIdx = -1;
+      $('fileInput').value = '';
+      renderTimeline();
+      renderList();
+      $('detailPanel').innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div>Load receipt JSON files to begin.</div><div style="font-size:11px;color:var(--muted)">Try loading all files from <code>receipts/ce-deployment-demo/</code></div></div>`;
+      renderDrill();
+    });
 
-      renderSelect();
+    // ── Init ───────────────────────────────────────────────────
+    renderTimeline();
+    renderList();
+    renderDrill();
     </script>
   </body>
 </html>

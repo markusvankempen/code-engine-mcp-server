@@ -1,0 +1,21 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "2db68007-572b-455c-9fc6-184df89836ec",
+    "timestamp": "2026-06-26T21:30:46.000Z",
+    "tool_name": "iam_get_token_info",
+    "action_type": "iam_token_refresh",
+    "status": "executed",
+    "target_ref": "iam:token",
+    "input_hash": "sha256:aecca8d42fcb2f48fd6516e178f5d84b1149b620adc8fa003d3a5e147e80f657",
+    "output_hash": "sha256:15d00fccee5d6e0eae67cd4ad973170dd9aba2308e1f9ff941e7decfa0243d74",
+    "error_hash": null,
+    "trace_ref": "trace:ce-deploy-session-demo-001",
+    "git_ref": "feature/add-splash-app@a1b2c3d",
+    "lineage_ref": "workflow:github-actions-run-9912",
+    "previous_receipt_hash": null
+  },
+  "signature": "1OeztYEXybNNhCquJJlSo6iAGUzMDLk47eNX/yOlPJcGRpXjQMbkPmtepDhL4PPG1WfIhNFeQz2OhA0JQTC7Aw==",
+  "public_key_id": "sha256:a99114a68364f6d804c5843038ea04d147b4130cdfcba3e1301864d956278be0"
+}

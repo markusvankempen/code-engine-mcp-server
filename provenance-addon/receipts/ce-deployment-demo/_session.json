@@ -1,0 +1,107 @@
+{
+  "session_id": "trace:ce-deploy-session-demo-001",
+  "description": "IBM Code Engine deployment: validate → build → push (fail/retry) → deploy → wait (fail/retry) → env vars → scale",
+  "generated_at": "2026-06-26T20:06:38.789Z",
+  "steps": [
+    {
+      "step": 1,
+      "label": "Validate Dockerfile",
+      "status": "executed",
+      "file": "2026-06-26T20-30-05-000Z-ce_validate_dockerfile.json",
+      "timestamp": "2026-06-26T20:30:05.000Z"
+    },
+    {
+      "step": 2,
+      "label": "Build Image",
+      "status": "executed",
+      "file": "2026-06-26T20-30-33-000Z-build_container_image.json",
+      "timestamp": "2026-06-26T20:30:33.000Z"
+    },
+    {
+      "step": 3,
+      "label": "Push Image",
+      "status": "failed",
+      "file": "2026-06-26T20-30-41-000Z-push_container_image-FAILED.json",
+      "timestamp": "2026-06-26T20:30:41.000Z",
+      "issue": "ICR token expired — re-login required before push can proceed."
+    },
+    {
+      "step": 4,
+      "label": "IAM Token Refresh",
+      "status": "executed",
+      "file": "2026-06-26T21-30-46-000Z-iam_get_token_info.json",
+      "timestamp": "2026-06-26T21:30:46.000Z"
+    },
+    {
+      "step": 5,
+      "label": "Push Image (retry)",
+      "status": "executed",
+      "file": "2026-06-26T21-31-08-000Z-push_container_image.json",
+      "timestamp": "2026-06-26T21:31:08.000Z"
+    },
+    {
+      "step": 6,
+      "label": "Create Pull Secret",
+      "status": "executed",
+      "file": "2026-06-26T21-31-15-000Z-ce_create_secret.json",
+      "timestamp": "2026-06-26T21:31:15.000Z"
+    },
+    {
+      "step": 7,
+      "label": "Deploy Application",
+      "status": "executed",
+      "file": "2026-06-26T21-31-23-000Z-ce_create_application.json",
+      "timestamp": "2026-06-26T21:31:23.000Z"
+    },
+    {
+      "step": 8,
+      "label": "Wait for Ready",
+      "status": "failed",
+      "file": "2026-06-26T21-33-28-000Z-ce_wait_for_app_ready-FAILED.json",
+      "timestamp": "2026-06-26T21:33:28.000Z",
+      "issue": "ImagePullBackOff — pull secret server field does not match ICR host. Refreshing pull secret to fix."
+    },
+    {
+      "step": 9,
+      "label": "Refresh Pull Secret",
+      "status": "executed",
+      "file": "2026-06-26T21-33-37-000Z-ce_refresh_icr_pull_secret.json",
+      "timestamp": "2026-06-26T21:33:37.000Z"
+    },
+    {
+      "step": 10,
+      "label": "Update App (redeploy)",
+      "status": "executed",
+      "file": "2026-06-26T21-33-43-000Z-ce_update_application-redeploy.json",
+      "timestamp": "2026-06-26T21:33:43.000Z"
+    },
+    {
+      "step": 11,
+      "label": "Wait for Ready",
+      "status": "executed",
+      "file": "2026-06-26T21-34-23-000Z-ce_wait_for_app_ready.json",
+      "timestamp": "2026-06-26T21:34:23.000Z"
+    },
+    {
+      "step": 12,
+      "label": "Set Env Vars",
+      "status": "executed",
+      "file": "2026-06-26T21-34-28-000Z-ce_update_application-env.json",
+      "timestamp": "2026-06-26T21:34:28.000Z"
+    },
+    {
+      "step": 13,
+      "label": "Scale Up (2–10)",
+      "status": "executed",
+      "file": "2026-06-26T21-34-33-000Z-ce_update_application-scale.json",
+      "timestamp": "2026-06-26T21:34:33.000Z"
+    },
+    {
+      "step": 14,
+      "label": "List Instances",
+      "status": "executed",
+      "file": "2026-06-26T21-34-51-000Z-ce_list_app_instances.json",
+      "timestamp": "2026-06-26T21:34:51.000Z"
+    }
+  ]
+}

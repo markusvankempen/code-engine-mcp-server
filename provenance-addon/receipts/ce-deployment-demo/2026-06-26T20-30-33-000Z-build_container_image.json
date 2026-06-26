@@ -1,0 +1,22 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "8009cd4f-787d-4cbd-abe2-113e300fd2dd",
+    "timestamp": "2026-06-26T20:30:33.000Z",
+    "tool_name": "build_container_image",
+    "action_type": "build_container_image",
+    "status": "executed",
+    "target_ref": "image:us.icr.io/mvk-code-engine/developer-splash:v1.0.0",
+    "artifact_hash": "sha256:7108510abd9e68de8d1946d0e9ca5cd5282e00722ea9a37e2441f1b34238575d",
+    "input_hash": "sha256:7bb433760d75ac4a93f21c6cf60fa24928d1c5dd0f07e15b2dc704f4bcd50f3c",
+    "output_hash": "sha256:0ae06fa194ede302ae483d98a214584dd7486e06ccad388f11d2022d7374392d",
+    "error_hash": null,
+    "trace_ref": "trace:ce-deploy-session-demo-001",
+    "git_ref": "feature/add-splash-app@a1b2c3d",
+    "lineage_ref": "workflow:github-actions-run-9912",
+    "previous_receipt_hash": null
+  },
+  "signature": "BBXAPNZM71u9PnONsbNK7b/htC4QZ7/MLfhMEriUEYrdd2Uv4FSqWSlzCJgGah62RbYcaeEQ4/ClzlUKt7UBAQ==",
+  "public_key_id": "sha256:a99114a68364f6d804c5843038ea04d147b4130cdfcba3e1301864d956278be0"
+}

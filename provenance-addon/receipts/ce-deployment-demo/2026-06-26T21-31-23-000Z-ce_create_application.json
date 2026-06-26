@@ -1,0 +1,21 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "9e8f69d4-9dd9-4d3d-94f4-450cca17e407",
+    "timestamp": "2026-06-26T21:31:23.000Z",
+    "tool_name": "ce_create_application",
+    "action_type": "ce_create_application",
+    "status": "executed",
+    "target_ref": "app:developer-splash@proj-demo-ca-tor-0001",
+    "input_hash": "sha256:31c1777a6a844d5e3ac2c2ef0d18334953a5616eabb1a950ad03bc77fdc6044c",
+    "output_hash": "sha256:d9918900fa84bd4538dd89484638edf5968a2c7369ca96cd462e2040c256a4e5",
+    "error_hash": null,
+    "trace_ref": "trace:ce-deploy-session-demo-001",
+    "git_ref": "feature/add-splash-app@a1b2c3d",
+    "lineage_ref": "workflow:github-actions-run-9912",
+    "previous_receipt_hash": null
+  },
+  "signature": "UxnCJIR44KLq+BNchGPAsuSZqcS6QjhSFfOvjwdVq1y7ZakbwpIlSwI+2rLsq4pTcr8Rm09zElh0H/uiBcDNDA==",
+  "public_key_id": "sha256:a99114a68364f6d804c5843038ea04d147b4130cdfcba3e1301864d956278be0"
+}

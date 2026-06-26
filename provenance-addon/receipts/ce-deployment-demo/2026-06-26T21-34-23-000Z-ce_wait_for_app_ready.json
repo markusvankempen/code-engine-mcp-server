@@ -1,0 +1,21 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "59d5b9b1-3cbe-4c46-b05d-d5390eb5605b",
+    "timestamp": "2026-06-26T21:34:23.000Z",
+    "tool_name": "ce_wait_for_app_ready",
+    "action_type": "ce_wait_for_app_ready",
+    "status": "executed",
+    "target_ref": "app:developer-splash@proj-demo-ca-tor-0001",
+    "input_hash": "sha256:4fd68b30afc89e240337589ac99d38d2fcf114c331cbc53c5232b7f970694532",
+    "output_hash": "sha256:051bd1dd0b0e6f0fe7befa1a32076b2363be227b25499eb777e40c374c00ef32",
+    "error_hash": null,
+    "trace_ref": "trace:ce-deploy-session-demo-001",
+    "git_ref": "feature/add-splash-app@a1b2c3d",
+    "lineage_ref": "workflow:github-actions-run-9912",
+    "previous_receipt_hash": null
+  },
+  "signature": "XnurKsSAKEDsRNC7sCAEMXAzLiEGCpui3uAX3Y8XFU9COU/qhzi/X+3V5heB9yGxwI2hi17/kchv98i4XfxyCw==",
+  "public_key_id": "sha256:a99114a68364f6d804c5843038ea04d147b4130cdfcba3e1301864d956278be0"
+}
