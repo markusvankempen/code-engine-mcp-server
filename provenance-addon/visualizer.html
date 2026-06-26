@@ -597,6 +597,68 @@
         `;
       }
 
+      // Trace context — show the AI conversation flow within the same trace
+      let traceHtml = '';
+      if (r.traceRef) {
+        const sameTrace = receipts.filter(t => t.traceRef === r.traceRef);
+        const posInTrace = sameTrace.findIndex(t => t.eventId === r.eventId);
+        const totalInTrace = sameTrace.length;
+
+        // Before: what led to this call
+        const before = sameTrace.slice(Math.max(0, posInTrace - 3), posInTrace);
+        // After: what the AI did next (recovery actions)
+        const after = sameTrace.slice(posInTrace + 1, posInTrace + 4);
+
+        const traceStepHtml = (t, label) => {
+          const isCurrent = t.eventId === r.eventId;
+          const isErr = t.status === 'failed';
+          const border = isCurrent ? 'var(--accent)' : (isErr ? 'rgba(239,68,68,.4)' : 'rgba(34,197,94,.3)');
+          const bg = isCurrent ? 'rgba(56,189,248,.08)' : (isErr ? 'rgba(239,68,68,.05)' : 'rgba(34,197,94,.04)');
+          const statusIcon = isErr ? '❌' : '✅';
+          const timeStr = t.timestamp ? t.timestamp.split('T')[1]?.slice(0,8) : '';
+          const globalIdx = receipts.findIndex(rx => rx.eventId === t.eventId);
+          return `<div style="border:1px solid ${border};background:${bg};border-radius:6px;padding:6px 8px;margin:3px 0;cursor:pointer;font-size:10.5px" onclick="selectReceipt(${globalIdx})">
+            <span style="color:var(--muted);font-size:9px">${esc(label)}</span>
+            <div style="margin-top:2px"><strong>${statusIcon} ${esc(short(t.toolName.replace(/^(workspace\.|ce_|build_|push_|iam_)/,''), 28))}</strong></div>
+            <div style="color:var(--muted2);font-size:9.5px">${esc(short(t.targetRef, 36))} <span style="float:right">${esc(timeStr)}</span></div>
+          </div>`;
+        };
+
+        let causeAnalysis = '';
+        if (isFail && before.length > 0) {
+          const lastBefore = before[before.length - 1];
+          causeAnalysis = `<div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.3);border-radius:6px;padding:8px 10px;margin:8px 0">
+            <div style="font-size:10px;color:var(--purple);font-weight:600;margin-bottom:4px">🔗 Causality</div>
+            <div style="font-size:10.5px;color:var(--muted2)">The AI called <strong style="color:var(--text)">${esc(short(lastBefore.toolName.replace(/^(workspace\.|ce_|build_|push_|iam_)/,''), 24))}</strong> immediately before this failure.
+            ${after.length > 0 ? `It then recovered by calling <strong style="color:var(--text)">${esc(short(after[0].toolName.replace(/^(workspace\.|ce_|build_|push_|iam_)/,''), 24))}</strong>.` : 'No recovery action recorded.'}
+            </div>
+          </div>`;
+        }
+
+        let recoveryPath = '';
+        if (isFail && after.length > 0) {
+          const nextSuccess = after.find(t => t.status === 'executed');
+          if (nextSuccess) {
+            recoveryPath = `<div class="fix-box" style="margin-top:4px">
+              <h4>🔄 Recovery Path Taken</h4>
+              <p>The AI recovered by calling <code>${esc(nextSuccess.toolName)}</code> → ${esc(short(nextSuccess.targetRef, 40))}</p>
+            </div>`;
+          }
+        }
+
+        traceHtml = `
+          <div class="section-hdr">🧵 Trace Context <span style="font-weight:400;text-transform:none;letter-spacing:0">(${posInTrace + 1} of ${totalInTrace} in this AI session)</span></div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-family:monospace">${esc(r.traceRef)}</div>
+          ${causeAnalysis}
+          ${before.length > 0 ? `<div style="font-size:9px;color:var(--muted);margin:6px 0 2px;text-transform:uppercase;letter-spacing:.05em">Before (what led here)</div>` : ''}
+          ${before.map((t, i) => traceStepHtml(t, `step ${posInTrace - before.length + i + 1}`)).join('')}
+          ${traceStepHtml(r, `step ${posInTrace + 1} — CURRENT`)}
+          ${after.length > 0 ? `<div style="font-size:9px;color:var(--muted);margin:6px 0 2px;text-transform:uppercase;letter-spacing:.05em">After (AI recovery / next actions)</div>` : ''}
+          ${after.map((t, i) => traceStepHtml(t, `step ${posInTrace + 2 + i}`)).join('')}
+          ${recoveryPath}
+        `;
+      }
+
       panel.innerHTML = `
         <div class="detail-title">${esc(r.toolName)}</div>
         <div class="detail-subtitle">${esc(r.timestamp)} · ${esc(r.receiptRole)}</div>
@@ -604,6 +666,8 @@
         <div class="pipeline">${pipeHtml}</div>
 
         ${errorHtml}
+
+        ${traceHtml}
 
         <div class="section-hdr">Claim Fields</div>
         <div class="kv">
@@ -645,11 +709,54 @@
       const tools = [...new Set(receipts.map(r => r.toolName))];
       const failedSteps = receipts.filter(r => r.status === 'failed');
 
+      // Build trace group summaries
+      const traceGroups = traceRefs.map(traceId => {
+        const inTrace = receipts.filter(r => r.traceRef === traceId);
+        const fails = inTrace.filter(r => r.status === 'failed');
+        const first = inTrace[0];
+        const last = inTrace[inTrace.length - 1];
+        return { traceId, count: inTrace.length, fails: fails.length, first, last, receipts: inTrace };
+      });
+
+      const traceGroupsHtml = traceGroups.length > 1 ? `
+        <div class="section-hdr">🧵 AI Chat Sessions (${traceGroups.length} traces)</div>
+        ${traceGroups.map(g => {
+          const isActiveTrace = selectedIdx >= 0 && receipts[selectedIdx]?.traceRef === g.traceId;
+          const border = isActiveTrace ? 'var(--accent)' : 'var(--line2)';
+          const firstIdx = receipts.findIndex(r => r.eventId === g.first.eventId);
+          return `<div style="border:1px solid ${border};border-radius:6px;padding:8px 10px;margin:4px 0;cursor:pointer;background:rgba(56,189,248,.03)" onclick="selectReceipt(${firstIdx})">
+            <div style="font-size:10px;color:var(--accent);font-family:monospace;margin-bottom:3px">${esc(short(g.traceId, 38))}</div>
+            <div style="font-size:10.5px;color:var(--text)">${g.count} tool calls · ${g.fails > 0 ? `<span style="color:#fca5a5">${g.fails} failed</span>` : '<span style="color:#86efac">all ok</span>'}</div>
+            <div style="font-size:9.5px;color:var(--muted);margin-top:2px">${esc(g.first.timestamp?.split('T')[1]?.slice(0,8) ?? '')} → ${esc(g.last.timestamp?.split('T')[1]?.slice(0,8) ?? '')}</div>
+          </div>`;
+        }).join('')}
+      ` : '';
+
+      // For the active trace, show the conversation flow
+      const activeTrace = selectedIdx >= 0 ? receipts[selectedIdx]?.traceRef : null;
+      const activeTraceReceipts = activeTrace ? receipts.filter(r => r.traceRef === activeTrace) : [];
+      const conversationHtml = activeTraceReceipts.length > 1 ? `
+        <div class="section-hdr">💬 Conversation Flow (${activeTraceReceipts.length} calls in active trace)</div>
+        <div style="max-height:220px;overflow-y:auto">
+        ${activeTraceReceipts.map((t, i) => {
+          const isCurrent = t.eventId === (receipts[selectedIdx]?.eventId ?? '');
+          const isErr = t.status === 'failed';
+          const bg = isCurrent ? 'rgba(56,189,248,.1)' : 'transparent';
+          const leftBorder = isCurrent ? '3px solid var(--accent)' : isErr ? '3px solid var(--err)' : '3px solid var(--ok)';
+          const globalIdx = receipts.findIndex(rx => rx.eventId === t.eventId);
+          return `<div style="padding:4px 8px;margin:2px 0;border-left:${leftBorder};background:${bg};cursor:pointer;border-radius:0 4px 4px 0" onclick="selectReceipt(${globalIdx})">
+            <div style="font-size:9px;color:var(--muted)">${i + 1}. ${t.timestamp?.split('T')[1]?.slice(0,8) ?? ''}</div>
+            <div style="font-size:10.5px;color:${isErr ? '#fca5a5' : 'var(--text)'}">${isErr ? '❌' : '✅'} ${esc(short(t.toolName.replace(/^(workspace\.|ce_|build_|push_|iam_)/,''), 26))}</div>
+          </div>`;
+        }).join('')}
+        </div>
+      ` : '';
+
       content.innerHTML = `
         <div class="session-card">
           <h3>📋 Session</h3>
-          ${traceRefs.map(t => `<p>${esc(t)}</p>`).join('') || '<p style="color:var(--muted)">No trace_ref</p>'}
-          ${gitRefs.map(g => `<p style="color:var(--muted2)">${esc(g)}</p>`).join('')}
+          ${traceRefs.length === 1 ? `<p style="font-family:monospace;font-size:10px">${esc(traceRefs[0])}</p>` : `<p style="color:var(--muted);font-size:10.5px">${traceRefs.length} traces loaded</p>`}
+          ${gitRefs.map(g => `<p style="color:var(--muted2);font-size:10.5px">${esc(g)}</p>`).join('')}
         </div>
 
         <div class="stat-row">
@@ -657,6 +764,10 @@
           <div class="stat ok-stat"><div class="n">${okCount}</div><div class="l">OK</div></div>
           <div class="stat err-stat"><div class="n">${failCount}</div><div class="l">Failed</div></div>
         </div>
+
+        ${traceGroupsHtml}
+
+        ${conversationHtml}
 
         ${failCount > 0 ? `
         <div class="section-hdr">Failures</div>
@@ -684,6 +795,7 @@
       renderDrill();
     }
 
+    window.selectReceipt = selectReceipt;
     window.selectByEventId = function(eid) {
       const idx = receipts.findIndex(r => r.eventId === eid);
       if (idx >= 0) selectReceipt(idx);
