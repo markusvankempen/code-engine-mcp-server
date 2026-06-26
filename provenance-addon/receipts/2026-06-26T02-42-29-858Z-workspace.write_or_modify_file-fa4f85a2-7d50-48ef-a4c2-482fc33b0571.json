@@ -1,0 +1,21 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "fa4f85a2-7d50-48ef-a4c2-482fc33b0571",
+    "timestamp": "2026-06-26T02:42:29.858Z",
+    "tool_name": "workspace.write_or_modify_file",
+    "action_type": "write_or_modify_file",
+    "status": "executed",
+    "target_ref": "path:src/index.ts",
+    "input_hash": "sha256:47d361d4a82c9b6beb62eedb31e427dcb0efce70b2765d15081758bc5eb54bfa",
+    "output_hash": "sha256:49ca58dd30bd9dda0e77d8c7ac6d4e77cbbe560ccb42257af9cff1cef46c0c9d",
+    "error_hash": null,
+    "trace_ref": "trace:rpc-demo-001",
+    "git_ref": "main@1a2b3c4",
+    "lineage_ref": "ticket:ENG-417",
+    "previous_receipt_hash": null
+  },
+  "signature": "qL8nFcmKX/32zb9pIOayqubHLTF8YFky30/shh4Ww1y20VTeieIWxdrqT/ej+8wHPlIU0FFY0XJo7cczleRJCg==",
+  "public_key_id": "sha256:2b7725b1c4fedfd42e6b7831cc99f986bdf816d9a9feb19ae2fb434bfa0629c9"
+}

@@ -3,12 +3,19 @@ node_modules/
 
 # Source code lives in the private dev repo only
 src/
-vscode-extension/
-examples/
 __tests__/
 build/
 scripts/
-provenance-addon/
+
+# VS Code extension — only the README is public; source stays in dev repo
+vscode-extension/*
+!vscode-extension/README.md
+
+# Examples — container demos are public; MCP server source example stays in dev repo
+examples/deploy-mcp-server-to-code-engine/
+
+# provenance-addon — public (docs + tooling)
+# (no exclusion needed — whole folder is public)
 
 # TypeScript / build config
 tsconfig.json
