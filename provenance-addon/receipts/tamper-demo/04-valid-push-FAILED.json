@@ -1,0 +1,22 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "f955acde-05a8-49cd-aa7e-04226a2b4a5f",
+    "timestamp": "2026-06-26T22:00:32.000Z",
+    "tool_name": "push_container_image",
+    "action_type": "push_container_image",
+    "status": "failed",
+    "target_ref": "image:us.icr.io/ns/mywebapp:v2",
+    "session_id": "session:tamper-demo-20260626",
+    "task_id": "push",
+    "input_hash": "sha256:170d3b33bff4a6e52295ef3a5beda6295804b4e077a823ea39c2d35bf32b7d40",
+    "output_hash": null,
+    "error_hash": "sha256:d1b77e514710f38af1726b2576bace256094060ccc232bfe820ec467abca53db",
+    "trace_ref": "session:tamper-demo-20260626",
+    "git_ref": "main@d1e2f3a",
+    "previous_receipt_hash": null
+  },
+  "signature": "GAEufAeMvh+Ms4QZU79HnEiJOgGuNkJDPwaxAYgcvzOju2n96dbT/ZDlo9X9kNmUPTrowxhUJiWVQLpQ9HyhAw==",
+  "public_key_id": "sha256:5bd6514847025f3f85b58913426af2bc0d71c8dc8baa170515ea3d1d2f6f372b"
+}

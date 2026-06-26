@@ -1,0 +1,22 @@
+{
+  "name": "provenance-addon",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-contained, dependency-free provenance receipt addon for Code Engine MCP. Optional no-op sink + BoundaryAttest adapter hook.",
+  "author": "Markus van Kempen <markus.van.kempen@gmail.com>",
+  "contributors": [
+    "Cullen Meyers (BoundaryAttest collaboration context)"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "example": "node example.mjs",
+    "demo:ce-deployment": "node demo-ce-deployment.mjs",
+    "demo:multi-session": "node demo-multi-session.mjs",
+    "demo:tamper": "node demo-tamper-scenarios.mjs",
+    "demo:all": "node example.mjs && node demo-ce-deployment.mjs && node demo-multi-session.mjs && node demo-tamper-scenarios.mjs"
+  }
+}

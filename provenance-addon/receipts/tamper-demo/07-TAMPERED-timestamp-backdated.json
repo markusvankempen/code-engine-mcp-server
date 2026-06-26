@@ -1,0 +1,28 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "0673ef59-c93f-404d-9a23-4456d34adf45",
+    "timestamp": "2026-01-01T00:00:00.000Z",
+    "tool_name": "build_container_image",
+    "action_type": "build_container_image",
+    "status": "executed",
+    "target_ref": "image:us.icr.io/ns/mywebapp:v2",
+    "session_id": "session:tamper-demo-20260626",
+    "task_id": "build",
+    "input_hash": "sha256:170d3b33bff4a6e52295ef3a5beda6295804b4e077a823ea39c2d35bf32b7d40",
+    "output_hash": "sha256:4f66a608cc0622f33dd160200ab5f2331058a4091b39135af3ce4064fff643c3",
+    "error_hash": null,
+    "trace_ref": "session:tamper-demo-20260626",
+    "git_ref": "main@d1e2f3a",
+    "previous_receipt_hash": null
+  },
+  "signature": "YUo1S1W1jdb2hcBGKEnss5r/UJXGihOE8zhwC4khIrdoVc9Jc181IETppyyXX186N+feFazR6OyaLjLPAN8CCQ==",
+  "public_key_id": "sha256:5bd6514847025f3f85b58913426af2bc0d71c8dc8baa170515ea3d1d2f6f372b",
+  "_tampered": {
+    "field": "timestamp",
+    "original": "2026-06-26T22:00:16.000Z",
+    "altered": "2026-01-01T00:00:00.000Z",
+    "description": "Attacker backdated the receipt to January to mislead audit timeline"
+  }
+}

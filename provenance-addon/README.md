@@ -47,28 +47,142 @@ What it does not prove:
 
 ## Folder Contents
 
-- canonical.mjs
-  - Canonical JSON + SHA-256 helpers.
-- redact.mjs
-  - Recursive sensitive-field redaction helper.
-- receipt.mjs
-  - Event-to-claim mapping, signing, verification.
-- sink.mjs
-  - Optional sink layer (no-op default + adapter sink).
-- example.mjs
-  - End-to-end demo with verification and tamper check.
-- package.json
-  - ESM and scripts, no external dependencies.
-- visualizer.html
-  - Standalone interactive receipt flow visualizer (browser-based, no dependencies).
-- receipts/
-  - Demo output location for generated receipt JSON files.
-- reference-js/
-  - Reference-only `.js` copies for side-by-side comparison.
-- reference-ts/
-  - Reference-only `.ts` copies for side-by-side comparison.
+| File / folder | Type | Purpose |
+|---|---|---|
+| `canonical.mjs` | Library | Canonical JSON + SHA-256 helpers |
+| `redact.mjs` | Library | Recursive sensitive-field redaction |
+| `receipt.mjs` | Library | Event → claim mapping, Ed25519 signing, verification |
+| `sink.mjs` | Library | Optional sink layer (no-op default + adapter sink) |
+| `example.mjs` | Runnable | End-to-end demo: no-op sink, adapter sink, fail-open |
+| `demo-ce-deployment.mjs` | Runnable | Generates CE deployment flow receipts (with failures) |
+| `demo-multi-session.mjs` | Runnable | Generates multi-session / multi-task chat flow receipts |
+| `demo-tamper-scenarios.mjs` | Runnable | Generates valid + tampered receipts for integrity demo |
+| `run-example.sh` | Script | Bash wrapper for `example.mjs` |
+| `run-demo-ce-deployment.sh` | Script | Bash wrapper for `demo-ce-deployment.mjs` |
+| `run-demo-multi-session.sh` | Script | Bash wrapper for `demo-multi-session.mjs` |
+| `run-demo-tamper.sh` | Script | Bash wrapper for `demo-tamper-scenarios.mjs` |
+| `run-all.sh` | Script | Runs all examples and demo generators |
+| `package.json` | Config | ESM metadata and npm scripts (no external dependencies) |
+| `visualizer.html` | Tool | Standalone browser receipt visualizer |
+| `receipts/` | Output | Demo receipt JSON output directory |
+| `reference-js/` | Docs | Reference-only `.js` copies for comparison |
+| `reference-ts/` | Docs | Reference-only `.ts` copies for comparison |
 
 Reference folders are documentation aids only. The active integration path remains the `.mjs` files in this folder.
+
+## Module Reference (`.mjs` files)
+
+### Library modules (import only — do not run directly)
+
+| File | What it does | Key exports |
+|---|---|---|
+| `canonical.mjs` | Deterministic JSON canonicalization and SHA-256 hashing for stable signatures | `canonicalize`, `canonicalJson`, `hashCanonical`, `hashRaw` |
+| `redact.mjs` | Replaces sensitive keys (`api_key`, `token`, `password`, etc.) with `<redacted>` before hashing | `redact`, `DEFAULT_SENSITIVE_KEYS` |
+| `receipt.mjs` | Builds signed claims from tool events; Ed25519 sign/verify; defines `McpReceiptEvent` shape | `buildSignedReceipt`, `verifySignedReceipt`, `createLocalSigner`, `newEventId` |
+| `sink.mjs` | Fail-open emit boundary; no-op sink (default) and file-writing adapter sink | `NoopProvenanceSink`, `BoundaryAttestProvenanceSink`, `emitToolCompleted` |
+
+Typical import chain:
+
+```
+sink.mjs → receipt.mjs → canonical.mjs + redact.mjs
+```
+
+### Runnable demos (execute with Node.js)
+
+| File | What it does | Output |
+|---|---|---|
+| `example.mjs` | Simulates a file-write tool, shows no-op sink, signed receipt + verification, and fail-open behavior | `receipts/*.json` (one receipt) |
+| `demo-ce-deployment.mjs` | Simulates a full Code Engine agent pipeline: validate → build → push (fail) → auth fix → deploy → scale | `receipts/ce-deployment-demo/` (~14 receipts) |
+| `demo-multi-session.mjs` | Simulates two AI chat sessions with multiple tasks, self-correction, and cross-session troubleshooting | `receipts/multi-session-demo/` (~20 receipts) |
+| `demo-tamper-scenarios.mjs` | Generates valid receipts then creates intentionally corrupted copies to demonstrate tamper detection | `receipts/tamper-demo/` (10 receipts + public key) |
+
+## Installation
+
+No npm install is required — this addon uses only Node.js built-in modules.
+
+Requirements:
+
+- Node.js 18+ (Ed25519 signing requires Node 18+)
+
+Check your version:
+
+```bash
+node --version
+```
+
+## Quick Start
+
+### Option 1 — Bash scripts (recommended)
+
+From the `provenance-addon/` folder:
+
+```bash
+cd provenance-addon
+
+# End-to-end example (signing, verification, fail-open)
+./run-example.sh
+
+# Code Engine deployment demo receipts
+./run-demo-ce-deployment.sh
+
+# Multi-session / multi-task chat demo receipts
+./run-demo-multi-session.sh
+
+# Run everything
+./run-all.sh
+```
+
+From the repository root:
+
+```bash
+bash provenance-addon/run-example.sh
+bash provenance-addon/run-demo-ce-deployment.sh
+bash provenance-addon/run-demo-multi-session.sh
+bash provenance-addon/run-all.sh
+```
+
+### Option 2 — npm scripts
+
+From the `provenance-addon/` folder:
+
+```bash
+cd provenance-addon
+
+npm run example
+npm run demo:ce-deployment
+npm run demo:multi-session
+npm run demo:all
+```
+
+### Option 3 — Node.js directly
+
+From the repository root:
+
+```bash
+node provenance-addon/example.mjs
+node provenance-addon/demo-ce-deployment.mjs
+node provenance-addon/demo-multi-session.mjs
+```
+
+Or from inside `provenance-addon/`:
+
+```bash
+cd provenance-addon
+node example.mjs
+node demo-ce-deployment.mjs
+node demo-multi-session.mjs
+```
+
+### View results in the visualizer
+
+After running a demo generator:
+
+1. Open `provenance-addon/visualizer.html` in a browser.
+2. Click **Load Receipt JSON Files**.
+3. Select one or more files from:
+   - `receipts/` — single example receipt
+   - `receipts/ce-deployment-demo/` — deployment flow
+   - `receipts/multi-session-demo/` — session/task chat flow
 
 ## Data Flow
 
@@ -82,7 +196,7 @@ Reference folders are documentation aids only. The active integration path remai
 ## Flow Chart (Mermaid)
 
 ```mermaid
-flowchart LR
+flowchart TD
   A[Tool Completes] --> B[Build Post-Action Event]
   B --> C[Redact Sensitive Fields]
   C --> D[Canonicalize JSON]
@@ -107,28 +221,6 @@ Click-through interactive flow is available in the VS Code extension receipt vis
 - receipt_role defaults to client_observed.
 - Trace/git/lineage refs are optional references.
 - Sink failures are swallowed (fail-open).
-
-## Installation
-
-No installation is required beyond Node.js.
-
-Requirements:
-
-- Node.js 18+
-
-## Quick Start
-
-From repository root:
-
-```bash
-node provenance-addon/example.mjs
-```
-
-Or from this folder:
-
-```bash
-npm run example
-```
 
 ## Expected Demo Behavior
 
@@ -284,6 +376,73 @@ How to use:
 1. Open `provenance-addon/visualizer.html` in a browser.
 2. Click **Load Receipt JSON Files** and select one or more files from `provenance-addon/receipts/`.
 3. Use the receipt selector to switch across historical traces.
+
+## Tamper Detection
+
+### What tamper detection is
+
+The primary value of signing receipts: **detect post-signing alterations**.
+
+If a receipt JSON file is modified after the original signer signed the canonical claim, Ed25519 verification will fail. This proves the receipt was tampered with — regardless of whether the tool originally succeeded or failed.
+
+### Three states a receipt can be in
+
+| State | Badge | Meaning |
+|---|---|---|
+| **Verified** | `✓ sig` (green) | Signature matches canonical claim — integrity confirmed |
+| **Tampered** | `⚠️ TAMPERED` (orange) | Signature does NOT match — receipt was altered after signing |
+| **No key** | *(no badge)* | No public key available to verify — status unknown |
+
+### Tamper demo: `demo-tamper-scenarios.mjs`
+
+Generates valid receipts and intentionally corrupted copies demonstrating 5 tamper scenarios:
+
+| Scenario | What was tampered | What verification detects |
+|---|---|---|
+| `target_ref` changed | Attacker hides which resource was targeted | Signature mismatch |
+| `status` flipped (`failed` → `executed`) | Attacker hides a failure | Signature mismatch |
+| `timestamp` backdated | Attacker changes when it happened | Signature mismatch |
+| `artifact_hash` removed | Attacker breaks content binding | Signature mismatch |
+| Signature replaced with random data | Attacker attempts to re-sign without key | Verification fails |
+| `tool_name` changed | Attacker disguises which tool ran | Signature mismatch |
+
+Run it:
+
+```bash
+./run-demo-tamper.sh
+# or
+npm run demo:tamper
+# or
+node demo-tamper-scenarios.mjs
+```
+
+### How the visualizer verifies
+
+When you load receipts that include a `_public_key.json` file (generated by the tamper demo), the visualizer:
+
+1. Imports the Ed25519 public key using the Web Crypto API
+2. For each receipt, computes the canonical JSON of the claim
+3. Verifies the Ed25519 signature against the canonical payload
+4. Marks each receipt as **verified**, **tampered**, or **no_key**
+
+The tamper demo automatically generates the public key file. Other demos use ephemeral keys — their receipts will show "no key" status (which is expected for dev/PoC flows).
+
+### How to see it
+
+1. Run `./run-demo-tamper.sh`
+2. Open `visualizer.html` in a browser
+3. Click **Load receipts** → select **all** files from `receipts/tamper-demo/` (including `_public_key.json`)
+4. Valid receipts show green `✓ sig` badges
+5. Tampered receipts show orange `⚠️ TAMPERED` badges with full drilldown
+
+### What tamper detection does NOT cover
+
+| Scenario | Detected by verification? | Why not? |
+|---|---|---|
+| Tool failed normally | No — that's a valid signed receipt with `status: "failed"` | Working as designed |
+| Request tampered **before** tool ran | No — signer signs what it observed | Needs caller-signed request intent (future) |
+| Attacker has the private key | No — they can sign anything | Key custody problem, not receipt format problem |
+| Receipt file deleted entirely | No — nothing to verify | Needs receipt chaining or transparency log |
 
 ## Failure Model
 

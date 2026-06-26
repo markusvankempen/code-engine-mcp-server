@@ -3,7 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="author" content="Markus van Kempen" />
+    <meta name="description" content="Standalone provenance receipt visualizer for Code Engine MCP — timeline replay, session/task drilldown, error analysis." />
     <title>Provenance Receipt Visualizer</title>
+    <!--
+      Provenance Receipt Visualizer v0.1
+
+      ## 👤 Autor/Developer
+      Markus van Kempen
+      Email: markus.van.kempen@gmail.com | mvankempen@ca.ibm.com
+      Website: https://markusvankempen.github.io/
+      No bug too small, no syntax too weird.
+    -->
     <style>
       :root {
         --bg-1: #0f172a;
@@ -39,23 +50,46 @@
         background: rgba(11,18,32,0.95);
         border-bottom: 1px solid var(--line);
         padding: 12px 20px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
         position: sticky;
         top: 0;
         z-index: 100;
         backdrop-filter: blur(8px);
       }
+      .header-main {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .header-brand { flex: 1; min-width: 220px; }
+      .header-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
       .header h1 {
         font-family: "IBM Plex Mono","SFMono-Regular",monospace;
         font-size: 0.95rem;
         color: var(--accent);
-        flex: 1;
         white-space: nowrap;
       }
       .header h1 span { color: var(--muted2); font-weight: 400; }
+      .header-author {
+        font-size: 10px;
+        color: var(--muted2);
+        margin-top: 3px;
+        line-height: 1.45;
+      }
+      .header-author a {
+        color: var(--muted2);
+        text-decoration: none;
+      }
+      .header-author a:hover { color: var(--accent); text-decoration: underline; }
+      .header-tagline {
+        font-style: italic;
+        color: var(--muted);
+      }
       .btn {
         background: var(--panel);
         color: var(--text);
@@ -88,6 +122,19 @@
       .tl-title { color: var(--muted2); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
       .tl-controls { display: flex; gap: 6px; margin-left: auto; align-items: center; }
       .tl-speed { color: var(--muted2); font-size: 11px; }
+      #sessionSelect {
+        max-width: 300px;
+        min-width: 180px;
+      }
+      .session-filter-badge {
+        font-size: 10px;
+        color: var(--accent);
+        background: rgba(56,189,248,.08);
+        border: 1px solid rgba(56,189,248,.25);
+        border-radius: 999px;
+        padding: 2px 8px;
+        margin-left: 6px;
+      }
       select.small {
         background: var(--panel);
         color: var(--text);
@@ -205,6 +252,12 @@
       }
       .badge.executed { background: rgba(34,197,94,.15); color: #86efac; border: 1px solid rgba(34,197,94,.3); }
       .badge.failed { background: rgba(239,68,68,.15); color: #fca5a5; border: 1px solid rgba(239,68,68,.3); }
+      .badge.tampered { background: rgba(251,191,36,.15); color: #fcd34d; border: 1px solid rgba(251,191,36,.4); font-weight: 700; }
+      .badge.verified { background: rgba(34,197,94,.08); color: #86efac; border: 1px solid rgba(34,197,94,.2); font-size: 8.5px; }
+      .tl-dot.tampered { border-color: #f59e0b; color: #f59e0b; background: rgba(245,158,11,.15); }
+      .tl-label.tampered { color: #fcd34d; }
+      .receipt-item.tampered-item { border-left-color: #f59e0b; }
+      .receipt-item.active.tampered-item { background: #2a1f0a; border-left-color: #f59e0b; }
 
       /* ── DETAIL PANEL ───────────────────────────────────── */
       #detailPanel {
@@ -352,22 +405,40 @@
       .stat .l { font-size: 9px; color: var(--muted); text-transform: uppercase; }
       .stat.ok-stat .n { color: var(--ok); }
       .stat.err-stat .n { color: var(--err); }
+      .stat.tamper-stat .n { color: #f59e0b; }
+      .stat.verify-stat .n { color: #86efac; }
     </style>
   </head>
   <body>
 
     <!-- HEADER -->
     <div class="header">
-      <h1>Provenance Receipt Visualizer <span>v0.1</span></h1>
-      <input id="fileInput" type="file" accept="application/json,.json" multiple />
-      <label for="fileInput" class="btn primary">📂 Load receipts</label>
-      <button id="clearBtn" class="btn danger" type="button">✕ Clear</button>
+      <div class="header-main">
+        <div class="header-brand">
+          <h1>Provenance Receipt Visualizer <span>v0.1</span></h1>
+          <p class="header-author">
+            👤 Markus van Kempen ·
+            <a href="mailto:markus.van.kempen@gmail.com">markus.van.kempen@gmail.com</a> ·
+            <a href="mailto:mvankempen@ca.ibm.com">mvankempen@ca.ibm.com</a> ·
+            <a href="https://markusvankempen.github.io/" target="_blank" rel="noopener noreferrer">markusvankempen.github.io</a>
+            <span class="header-tagline"> — No bug too small, no syntax too weird.</span>
+          </p>
+        </div>
+        <div class="header-actions">
+          <input id="fileInput" type="file" accept="application/json,.json" multiple />
+          <label for="fileInput" class="btn primary">📂 Load receipts</label>
+          <button id="clearBtn" class="btn danger" type="button">✕ Clear</button>
+        </div>
+      </div>
     </div>
 
     <!-- TIMELINE -->
     <div id="timelineSection">
       <div class="tl-header">
         <span class="tl-title">Timeline</span>
+        <select id="sessionSelect" class="small" title="Filter by chat session / thread" style="display:none">
+          <option value="">All chat sessions</option>
+        </select>
         <div id="tlCount" style="font-size:11px;color:var(--muted)">No receipts loaded — load JSON files from receipts/ or receipts/ce-deployment-demo/</div>
         <div class="tl-controls" id="tlControls" style="display:none">
           <button id="replayPrev" class="btn" title="Previous step">◄</button>
@@ -416,6 +487,7 @@
     // ── State ─────────────────────────────────────────────────
     let receipts = [];
     let selectedIdx = -1;
+    let selectedSessionFilter = null; // null = all sessions; string = session_id or trace_ref
     let replayTimer = null;
     let replayIdx = -1;
     let isPlaying = false;
@@ -426,6 +498,43 @@
     const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const asJson = (v) => esc(JSON.stringify(v, null, 2));
     const hashShort = (h) => h ? String(h).slice(0, 15) + '…' : 'null';
+
+    function getSessionKey(r) {
+      return r.sessionId || r.traceRef || '';
+    }
+
+    function getAllSessionIds() {
+      return [...new Set(receipts.map(getSessionKey).filter(Boolean))];
+    }
+
+    function getVisibleEntries() {
+      return receipts
+        .map((r, globalIdx) => ({ r, globalIdx }))
+        .filter(({ r }) => !selectedSessionFilter || getSessionKey(r) === selectedSessionFilter);
+    }
+
+    function sessionDisplayName(key) {
+      return String(key).replace(/^(session|trace):/, '');
+    }
+
+    function updateSessionSelect() {
+      const sel = $('sessionSelect');
+      const sessions = getAllSessionIds();
+      sel.style.display = sessions.length ? 'inline-block' : 'none';
+      if (!sessions.length) {
+        sel.innerHTML = '<option value="">All chat sessions</option>';
+        return;
+      }
+      const current = selectedSessionFilter || '';
+      sel.innerHTML =
+        `<option value="">All chat sessions (${receipts.length})</option>` +
+        sessions.map((sid) => {
+          const count = receipts.filter((r) => getSessionKey(r) === sid).length;
+          const fails = receipts.filter((r) => getSessionKey(r) === sid && r.status === 'failed').length;
+          const label = `${sessionDisplayName(sid)} (${count}${fails ? `, ${fails} failed` : ''})`;
+          return `<option value="${esc(sid)}"${sid === current ? ' selected' : ''}>${esc(short(label, 52))}</option>`;
+        }).join('');
+    }
 
     function parseReceipt(obj, sourceName) {
       const claim = (obj && obj.claim) ? obj.claim : {};
@@ -452,7 +561,55 @@
         outputHash: claim.output_hash || null,
         errorHash: claim.error_hash || null,
         prevHash: claim.previous_receipt_hash || null,
+        tamperInfo: obj._tampered || null,
+        verifyStatus: 'unknown', // 'verified' | 'tampered' | 'no_key' | 'unknown'
       };
+    }
+
+    // ── Cryptographic verification (Web Crypto Ed25519) ─────────
+    let loadedPublicKey = null; // CryptoKey for Ed25519 verification
+    let loadedPublicKeyId = '';
+
+    function canonicalize(value) {
+      if (Array.isArray(value)) return value.map(v => canonicalize(v));
+      if (value && typeof value === 'object') {
+        const out = {};
+        for (const key of Object.keys(value).sort()) {
+          if (value[key] === undefined) continue;
+          out[key] = canonicalize(value[key]);
+        }
+        return out;
+      }
+      return value;
+    }
+
+    function canonicalJson(value) {
+      return JSON.stringify(canonicalize(value));
+    }
+
+    async function importPublicKey(spkiBase64) {
+      const der = Uint8Array.from(atob(spkiBase64), c => c.charCodeAt(0));
+      return crypto.subtle.importKey('spki', der, { name: 'Ed25519' }, false, ['verify']);
+    }
+
+    async function verifyReceipt(receipt) {
+      if (!loadedPublicKey) return 'no_key';
+      if (receipt.publicKeyId && loadedPublicKeyId && receipt.publicKeyId !== loadedPublicKeyId) return 'no_key';
+      if (!receipt.signature || !receipt.claim) return 'tampered';
+      try {
+        const data = new TextEncoder().encode(canonicalJson(receipt.claim));
+        const sig = Uint8Array.from(atob(receipt.signature), c => c.charCodeAt(0));
+        const ok = await crypto.subtle.verify('Ed25519', loadedPublicKey, sig, data);
+        return ok ? 'verified' : 'tampered';
+      } catch (e) {
+        return 'tampered';
+      }
+    }
+
+    async function verifyAllReceipts() {
+      for (const r of receipts) {
+        r.verifyStatus = await verifyReceipt(r.raw);
+      }
     }
 
     // ── Error diagnosis ────────────────────────────────────────
@@ -495,34 +652,48 @@
     function renderTimeline() {
       const track = $('timelineTrack');
       track.innerHTML = '';
-      $('tlControls').style.display = receipts.length ? 'flex' : 'none';
+      updateSessionSelect();
+
+      const visible = getVisibleEntries();
+      $('tlControls').style.display = visible.length ? 'flex' : 'none';
 
       if (!receipts.length) {
         $('tlCount').textContent = 'No receipts loaded — load JSON files from receipts/ or receipts/ce-deployment-demo/';
         return;
       }
-      const fails = receipts.filter(r => r.status === 'failed').length;
-      $('tlCount').textContent = `${receipts.length} receipts  ·  ${receipts.filter(r=>r.status==='executed').length} ✅  ·  ${fails} ❌`;
+      if (!visible.length) {
+        $('tlCount').textContent = 'No receipts in the selected chat session.';
+        return;
+      }
 
-      receipts.forEach((r, i) => {
+      const fails = visible.filter((e) => e.r.status === 'failed').length;
+      const sessionNote = selectedSessionFilter
+        ? ` · filtered to 1 chat`
+        : getAllSessionIds().length > 1
+          ? ` · ${getAllSessionIds().length} chats — use dropdown to filter`
+          : '';
+      $('tlCount').textContent = `${visible.length} receipts${sessionNote}  ·  ${visible.filter((e) => e.r.status === 'executed').length} ✅  ·  ${fails} ❌`;
+
+      visible.forEach(({ r, globalIdx }, i) => {
         const isPast = isPlaying && i < replayIdx;
-        const isActive = i === (isPlaying ? replayIdx : selectedIdx);
+        const isActive = globalIdx === (isPlaying ? (visible[replayIdx]?.globalIdx ?? -1) : selectedIdx);
+        const isTampered = r.verifyStatus === 'tampered';
         const dotClass = [
           'tl-dot',
-          r.status,
+          isTampered ? 'tampered' : r.status,
           isActive ? 'active' : '',
           isPast ? 'replay-past' : '',
         ].filter(Boolean).join(' ');
-        const labelClass = ['tl-label', isActive ? 'active' : '', r.status === 'failed' ? 'failed' : ''].filter(Boolean).join(' ');
-        const icon = r.status === 'failed' ? '✕' : String(i + 1);
+        const labelClass = ['tl-label', isActive ? 'active' : '', isTampered ? 'tampered' : r.status === 'failed' ? 'failed' : ''].filter(Boolean).join(' ');
+        const icon = isTampered ? '⚠' : r.status === 'failed' ? '✕' : String(i + 1);
 
         const step = document.createElement('div');
         step.className = 'tl-step';
         step.innerHTML = `<div class="${dotClass}">${icon}</div><div class="${labelClass}" title="${esc(r.toolName)}">${esc(short(r.toolName.replace(/^(workspace\.|ce_|build_|push_|iam_)/,''), 14))}</div>`;
-        step.addEventListener('click', () => { stopReplay(); selectReceipt(i); });
+        step.addEventListener('click', () => { stopReplay(); selectReceipt(globalIdx); });
         track.appendChild(step);
 
-        if (i < receipts.length - 1) {
+        if (i < visible.length - 1) {
           const conn = document.createElement('div');
           conn.className = 'tl-connector';
           track.appendChild(conn);
@@ -534,17 +705,28 @@
     function renderList() {
       const list = $('receiptList');
       list.innerHTML = '';
-      receipts.forEach((r, i) => {
+      const visible = getVisibleEntries();
+      const header = document.querySelector('#listPanel .list-header');
+      if (header) {
+        header.innerHTML = selectedSessionFilter
+          ? `Receipts <span class="session-filter-badge">${esc(short(sessionDisplayName(selectedSessionFilter), 24))}</span>`
+          : 'Receipts';
+      }
+      visible.forEach(({ r, globalIdx }) => {
         const isFail = r.status === 'failed';
-        const isActive = i === selectedIdx;
+        const isTampered = r.verifyStatus === 'tampered';
+        const isActive = globalIdx === selectedIdx;
         const div = document.createElement('div');
-        div.className = ['receipt-item', isActive ? 'active' : '', isFail ? 'failed-item' : ''].filter(Boolean).join(' ');
+        div.className = ['receipt-item', isActive ? 'active' : '', isTampered ? 'tampered-item' : isFail ? 'failed-item' : ''].filter(Boolean).join(' ');
+        const verifyBadge = r.verifyStatus === 'verified' ? '<span class="badge verified">✓ sig</span>'
+          : r.verifyStatus === 'tampered' ? '<span class="badge tampered">⚠️ TAMPERED</span>'
+          : '';
         div.innerHTML = `
-          <div class="ri-tool">${esc(short(r.toolName, 32))}<span class="badge ${r.status}">${r.status}</span></div>
+          <div class="ri-tool">${esc(short(r.toolName, 32))}<span class="badge ${r.status}">${r.status}</span>${verifyBadge}</div>
           <div class="ri-meta">${esc(short(r.targetRef, 36))}</div>
-          <div class="ri-meta">${esc(short(r.timestamp, 30))}</div>
+          <div class="ri-meta">${esc(short(r.timestamp, 30))}${r.taskId ? ` · ${esc(r.taskId)}` : ''}</div>
         `;
-        div.addEventListener('click', () => { stopReplay(); selectReceipt(i); });
+        div.addEventListener('click', () => { stopReplay(); selectReceipt(globalIdx); });
         list.appendChild(div);
       });
     }
@@ -562,13 +744,17 @@
       const hasSig = Boolean(r.signature);
       const hasArtifact = Boolean(r.artifactHash);
 
+      const isTampered = r.verifyStatus === 'tampered';
+      const isVerified = r.verifyStatus === 'verified';
+
       // Pipeline steps
+      const verifyDetail = isTampered ? 'TAMPERED ✗' : isVerified ? 'Ed25519 ✓' : (hasSig ? 'Ed25519 (no key)' : 'missing ✗');
       const pipeSteps = [
         { icon: '⚙️', label: 'Tool', detail: r.actionType || r.toolName, ok: true },
         { icon: '🔒', label: 'Redact', detail: r.inputHash ? hashShort(r.inputHash) : 'no input', ok: Boolean(r.inputHash || r.artifactHash) },
-        { icon: '📐', label: 'Canonical', detail: 'snake_case claim', ok: true },
-        { icon: '✍️', label: 'Sign', detail: hasSig ? 'Ed25519 ✓' : 'missing ✗', ok: hasSig },
-        { icon: isFail ? '⚠️' : '✅', label: 'Outcome', detail: isFail ? 'error_hash' : 'output_hash', ok: !isFail },
+        { icon: '📐', label: 'Canonical', detail: 'snake_case claim', ok: !isTampered },
+        { icon: '✍️', label: 'Sign', detail: verifyDetail, ok: hasSig && !isTampered },
+        { icon: isTampered ? '🚨' : isFail ? '⚠️' : '✅', label: isTampered ? 'Integrity' : 'Outcome', detail: isTampered ? 'SIGNATURE MISMATCH' : isFail ? 'error_hash' : 'output_hash', ok: !isFail && !isTampered },
       ];
 
       const pipeHtml = pipeSteps.map((s, i) => `
@@ -595,6 +781,49 @@
           <div class="fix-box">
             <h4>💡 Suggested Fix</h4>
             <p>${esc(diag.fix)}</p>
+          </div>
+        `;
+      }
+
+      // Tamper alert section
+      let tamperHtml = '';
+      if (isTampered) {
+        const info = r.tamperInfo;
+        tamperHtml = `
+          <div class="section-hdr" style="color:#f59e0b">🚨 Tamper Detection — Signature Verification FAILED</div>
+          <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:12px;margin-bottom:10px">
+            <div style="color:#fcd34d;font-weight:700;font-size:12px;margin-bottom:6px">⚠️ This receipt has been altered after signing</div>
+            <p style="color:var(--muted2);font-size:11px;line-height:1.6;margin-bottom:8px">
+              The Ed25519 signature does not match the canonical claim payload. This means one or more fields
+              were modified after the original signer signed this receipt.
+            </p>
+            ${info ? `
+              <div style="border-top:1px solid rgba(245,158,11,.2);padding-top:8px;margin-top:8px">
+                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Tampered Field</div>
+                <div style="font-size:11px;color:#fcd34d;font-family:monospace">${esc(info.field)}</div>
+                ${info.original ? `<div style="font-size:10px;color:var(--muted2);margin-top:4px">Original: <code style="color:#86efac">${esc(String(info.original).slice(0, 60))}</code></div>` : ''}
+                ${info.altered ? `<div style="font-size:10px;color:var(--muted2)">Altered: <code style="color:#fca5a5">${esc(String(info.altered).slice(0, 60))}</code></div>` : ''}
+                ${info.description ? `<div style="font-size:10.5px;color:var(--text);margin-top:6px;line-height:1.5">${esc(info.description)}</div>` : ''}
+              </div>
+            ` : `
+              <div style="font-size:10.5px;color:var(--muted2)">No metadata about what was tampered — run comparison against original receipt if available.</div>
+            `}
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(245,158,11,.2)">
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Recommended Actions</div>
+              <ul style="font-size:10.5px;color:var(--text);list-style:disc;padding-left:18px;line-height:1.7">
+                <li>Investigate chain of custody for this receipt file</li>
+                <li>Compare with backup or original receipt store</li>
+                <li>Check access logs for who modified the file</li>
+                <li>Alert security/audit team if in production environment</li>
+              </ul>
+            </div>
+          </div>
+        `;
+      } else if (isVerified) {
+        tamperHtml = `
+          <div style="background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:8px 12px;margin-bottom:10px">
+            <span style="color:#86efac;font-size:11px;font-weight:600">✓ Signature Verified</span>
+            <span style="color:var(--muted2);font-size:10px;margin-left:8px">Ed25519 signature matches canonical claim — receipt integrity confirmed.</span>
           </div>
         `;
       }
@@ -694,6 +923,8 @@
 
         <div class="pipeline">${pipeHtml}</div>
 
+        ${tamperHtml}
+
         ${errorHtml}
 
         ${traceHtml}
@@ -735,6 +966,8 @@
       const total = receipts.length;
       const okCount = receipts.filter(r => r.status === 'executed').length;
       const failCount = receipts.filter(r => r.status === 'failed').length;
+      const tamperedCount = receipts.filter(r => r.verifyStatus === 'tampered').length;
+      const verifiedCount = receipts.filter(r => r.verifyStatus === 'verified').length;
       const traceRefs = [...new Set(receipts.map(r => r.traceRef).filter(Boolean))];
       const gitRefs = [...new Set(receipts.map(r => r.gitRef).filter(Boolean))];
       const tools = [...new Set(receipts.map(r => r.toolName))];
@@ -751,19 +984,21 @@
         return { traceId: sid, count: inSession.length, fails: fails.length, tasks, first, last, receipts: inSession };
       });
 
-      const traceGroupsHtml = traceGroups.length > 1 ? `
+      const traceGroupsHtml = traceGroups.length ? `
         <div class="section-hdr">💬 AI Chat Sessions (${traceGroups.length})</div>
+        <p style="font-size:10px;color:var(--muted);margin:-2px 0 6px">Click a session to filter timeline, list, and conversation flow.</p>
         ${traceGroups.map(g => {
-          const isActiveTrace = selectedIdx >= 0 && (receipts[selectedIdx]?.sessionId || receipts[selectedIdx]?.traceRef) === g.traceId;
+          const isActiveTrace = selectedSessionFilter === g.traceId;
           const border = isActiveTrace ? 'var(--accent)' : 'var(--line2)';
           const firstIdx = receipts.findIndex(r => r.eventId === g.first.eventId);
-          return `<div style="border:1px solid ${border};border-radius:6px;padding:8px 10px;margin:4px 0;cursor:pointer;background:rgba(56,189,248,.03)" onclick="selectReceipt(${firstIdx})">
+          return `<div style="border:1px solid ${border};border-radius:6px;padding:8px 10px;margin:4px 0;cursor:pointer;background:rgba(56,189,248,.03)" onclick="selectSessionByKey(${JSON.stringify(g.traceId)})">
             <div style="font-size:10px;color:var(--accent);font-family:monospace;margin-bottom:3px">${esc(short(g.traceId, 38))}</div>
             <div style="font-size:10.5px;color:var(--text)">${g.count} tool calls · ${g.tasks.length} tasks · ${g.fails > 0 ? `<span style="color:#fca5a5">${g.fails} failed</span>` : '<span style="color:#86efac">all ok</span>'}</div>
             <div style="font-size:9.5px;color:var(--muted);margin-top:2px">${esc(g.first.timestamp?.split('T')[1]?.slice(0,8) ?? '')} → ${esc(g.last.timestamp?.split('T')[1]?.slice(0,8) ?? '')}</div>
             ${g.tasks.length > 0 ? `<div style="font-size:9px;color:var(--purple);margin-top:3px">${g.tasks.map(t => esc(t)).join(' · ')}</div>` : ''}
           </div>`;
         }).join('')}
+        ${selectedSessionFilter ? `<button type="button" class="btn" style="width:100%;margin-top:6px" onclick="selectSessionByKey(null)">Show all sessions</button>` : ''}
       ` : '';
 
       // For the active session, show the conversation flow
@@ -821,14 +1056,27 @@
           <div class="stat"><div class="n">${total}</div><div class="l">Total</div></div>
           <div class="stat ok-stat"><div class="n">${okCount}</div><div class="l">OK</div></div>
           <div class="stat err-stat"><div class="n">${failCount}</div><div class="l">Failed</div></div>
+          ${tamperedCount > 0 ? `<div class="stat tamper-stat"><div class="n">${tamperedCount}</div><div class="l">Tampered</div></div>` : ''}
+          ${verifiedCount > 0 ? `<div class="stat verify-stat"><div class="n">${verifiedCount}</div><div class="l">Verified</div></div>` : ''}
         </div>
 
         ${traceGroupsHtml}
 
         ${conversationHtml}
 
+        ${tamperedCount > 0 ? `
+        <div class="section-hdr" style="color:#f59e0b">🚨 Tampered Receipts (${tamperedCount})</div>
+        ${receipts.filter(r => r.verifyStatus === 'tampered').map(r => {
+          const info = r.tamperInfo;
+          return `<div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.25);border-radius:6px;padding:6px 10px;margin:3px 0;cursor:pointer" onclick="selectByEventId('${esc(r.eventId)}')">
+            <div style="font-size:10.5px;color:#fcd34d;font-weight:600">⚠️ ${esc(short(r.toolName, 28))} ${info ? `— ${esc(info.field)}` : ''}</div>
+            ${info ? `<div style="font-size:9.5px;color:var(--muted2)">${esc(short(info.description, 60))}</div>` : ''}
+          </div>`;
+        }).join('')}
+        ` : ''}
+
         ${failCount > 0 ? `
-        <div class="section-hdr">Failures</div>
+        <div class="section-hdr">Tool Failures (${failCount})</div>
         ${failedSteps.map(r => {
           const code = getErrorCode(r);
           const diag = getDiagnosis(r.actionType, code);
@@ -837,7 +1085,7 @@
             <p style="font-size:10.5px;color:#fca5a5">${esc(diag.label)}</p>
           </div>`;
         }).join('')}
-        ` : `<div class="fix-box"><h4>✅ All steps succeeded</h4><p>No failures detected in this session.</p></div>`}
+        ` : (!tamperedCount ? `<div class="fix-box"><h4>✅ All steps succeeded</h4><p>No failures or integrity issues detected.</p></div>` : '')}
 
         <div class="section-hdr">Tools Used (${tools.length})</div>
         ${tools.map(t => `<div style="font-size:10.5px;color:var(--muted2);padding:2px 0;font-family:monospace">${esc(t)}</div>`).join('')}
@@ -853,7 +1101,23 @@
       renderDrill();
     }
 
+    function selectSessionByKey(key) {
+      stopReplay();
+      selectedSessionFilter = key || null;
+      $('sessionSelect').value = selectedSessionFilter || '';
+      const entries = getVisibleEntries();
+      if (entries.length) selectReceipt(entries[0].globalIdx);
+      else {
+        selectedIdx = -1;
+        renderList();
+        renderTimeline();
+        renderDetail();
+        renderDrill();
+      }
+    }
+
     window.selectReceipt = selectReceipt;
+    window.selectSessionByKey = selectSessionByKey;
     window.selectByEventId = function(eid) {
       const idx = receipts.findIndex(r => r.eventId === eid);
       if (idx >= 0) selectReceipt(idx);
@@ -868,8 +1132,10 @@
     }
 
     function stepReplay(idx) {
+      const visible = getVisibleEntries();
       replayIdx = idx;
-      selectedIdx = idx;
+      const entry = visible[idx];
+      selectedIdx = entry ? entry.globalIdx : -1;
       renderTimeline();
       renderList();
       renderDetail();
@@ -877,7 +1143,8 @@
     }
 
     function startReplay() {
-      if (!receipts.length) return;
+      const visible = getVisibleEntries();
+      if (!visible.length) return;
       isPlaying = true;
       $('replayPlay').textContent = '⏹ Stop';
       replayIdx = 0;
@@ -885,7 +1152,7 @@
 
       function tick() {
         stepReplay(replayIdx);
-        if (replayIdx < receipts.length - 1) {
+        if (replayIdx < visible.length - 1) {
           replayIdx++;
           replayTimer = setTimeout(tick, delay);
         } else {
@@ -901,11 +1168,19 @@
     });
     $('replayPrev').addEventListener('click', () => {
       stopReplay();
-      if (selectedIdx > 0) selectReceipt(selectedIdx - 1);
+      const visible = getVisibleEntries();
+      const pos = visible.findIndex((e) => e.globalIdx === selectedIdx);
+      if (pos > 0) selectReceipt(visible[pos - 1].globalIdx);
     });
     $('replayNext').addEventListener('click', () => {
       stopReplay();
-      if (selectedIdx < receipts.length - 1) selectReceipt(selectedIdx + 1);
+      const visible = getVisibleEntries();
+      const pos = visible.findIndex((e) => e.globalIdx === selectedIdx);
+      if (pos >= 0 && pos < visible.length - 1) selectReceipt(visible[pos + 1].globalIdx);
+    });
+
+    $('sessionSelect').addEventListener('change', (e) => {
+      selectSessionByKey(e.target.value || null);
     });
 
     // ── Load files ─────────────────────────────────────────────
@@ -913,7 +1188,17 @@
       const files = Array.from(e.target.files || []);
       const next = [];
       for (const file of files) {
-        if (file.name.startsWith('_')) continue; // skip _session.json manifest
+        if (file.name === '_session.json') continue;
+        if (file.name === '_public_key.json') {
+          try {
+            const keyData = JSON.parse(await file.text());
+            if (keyData.public_key_spki_base64 && keyData.algorithm === 'Ed25519') {
+              loadedPublicKey = await importPublicKey(keyData.public_key_spki_base64);
+              loadedPublicKeyId = keyData.public_key_id || '';
+            }
+          } catch { /* skip invalid key */ }
+          continue;
+        }
         try {
           const text = await file.text();
           const parsed = JSON.parse(text);
@@ -922,9 +1207,15 @@
         } catch { /* skip invalid */ }
       }
       receipts = next.sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)));
+      selectedSessionFilter = null;
       selectedIdx = receipts.length > 0 ? 0 : -1;
       replayIdx = -1;
       isPlaying = false;
+
+      if (loadedPublicKey) {
+        await verifyAllReceipts();
+      }
+
       renderTimeline();
       renderList();
       renderDetail();
@@ -934,6 +1225,7 @@
     $('clearBtn').addEventListener('click', () => {
       stopReplay();
       receipts = [];
+      selectedSessionFilter = null;
       selectedIdx = -1;
       $('fileInput').value = '';
       renderTimeline();

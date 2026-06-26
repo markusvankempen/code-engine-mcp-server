@@ -1,0 +1,7 @@
+{
+  "description": "Public key used to sign all receipts in this demo folder. Import into Web Crypto as SPKI/Ed25519 for browser-side verification.",
+  "public_key_id": "sha256:5bd6514847025f3f85b58913426af2bc0d71c8dc8baa170515ea3d1d2f6f372b",
+  "public_key_spki_base64": "MCowBQYDK2VwAyEADL1/f+4Hobv3ufHkL9aRy7t9kuP3FVSTgMrH/fiTD0s=",
+  "algorithm": "Ed25519",
+  "format": "spki"
+}

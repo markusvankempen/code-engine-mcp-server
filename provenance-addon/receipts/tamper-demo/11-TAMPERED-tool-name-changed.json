@@ -1,0 +1,28 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "7dbbfceb-edf3-41b9-83bf-58fe69b84221",
+    "timestamp": "2026-06-26T22:00:24.000Z",
+    "tool_name": "ce_delete_application",
+    "action_type": "ce_delete_application",
+    "status": "executed",
+    "target_ref": "app:mywebapp@proj-prod-ca-tor",
+    "session_id": "session:tamper-demo-20260626",
+    "task_id": "deploy",
+    "input_hash": "sha256:170d3b33bff4a6e52295ef3a5beda6295804b4e077a823ea39c2d35bf32b7d40",
+    "output_hash": "sha256:4f66a608cc0622f33dd160200ab5f2331058a4091b39135af3ce4064fff643c3",
+    "error_hash": null,
+    "trace_ref": "session:tamper-demo-20260626",
+    "git_ref": "main@d1e2f3a",
+    "previous_receipt_hash": null
+  },
+  "signature": "W5gblNN9FR51bV4inTOUwCdxnRnR/SRcFzeewZFO2tJyv9s8cv5DCob64j7Z9QGODk2n+TmQPVA9LtdxQsm8DQ==",
+  "public_key_id": "sha256:5bd6514847025f3f85b58913426af2bc0d71c8dc8baa170515ea3d1d2f6f372b",
+  "_tampered": {
+    "field": "tool_name",
+    "original": "ce_create_application",
+    "altered": "ce_delete_application",
+    "description": "Attacker changed the tool name to disguise a create as a delete"
+  }
+}

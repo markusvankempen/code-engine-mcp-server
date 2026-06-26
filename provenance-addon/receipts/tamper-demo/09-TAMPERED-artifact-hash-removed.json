@@ -1,0 +1,28 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "3e7d4917-af3c-4e10-a484-fd9265674c3c",
+    "timestamp": "2026-06-26T22:00:40.000Z",
+    "tool_name": "workspace.write_or_modify_file",
+    "action_type": "write_or_modify_file",
+    "status": "executed",
+    "target_ref": "path:src/index.ts",
+    "session_id": "session:tamper-demo-20260626",
+    "task_id": "write-file",
+    "input_hash": "sha256:170d3b33bff4a6e52295ef3a5beda6295804b4e077a823ea39c2d35bf32b7d40",
+    "output_hash": "sha256:4f66a608cc0622f33dd160200ab5f2331058a4091b39135af3ce4064fff643c3",
+    "error_hash": null,
+    "trace_ref": "session:tamper-demo-20260626",
+    "git_ref": "main@d1e2f3a",
+    "previous_receipt_hash": null
+  },
+  "signature": "+XrpjDHXU+8mgpG/v+P2iIwcvCCf2uLCc3MCiNBVSduNjLl89nBpIfRYi/A9wd1EEuPMZBmi1xDf9wuV0ZG0CQ==",
+  "public_key_id": "sha256:5bd6514847025f3f85b58913426af2bc0d71c8dc8baa170515ea3d1d2f6f372b",
+  "_tampered": {
+    "field": "artifact_hash",
+    "original": "sha256:08ae9dc14597b89a648d5bdbc45283493248ea97c9784a10c883bf909b0613d5",
+    "altered": "(removed)",
+    "description": "Attacker removed the artifact_hash to break the binding between receipt and file content"
+  }
+}
