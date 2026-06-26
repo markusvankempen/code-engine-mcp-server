@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Generate tamper detection demo receipts for the visualizer.
 # Creates valid + intentionally corrupted receipts to demonstrate signature verification.
+#
+# ## 👤 Autor/Developer
+# Markus van Kempen
+# Email: markus.van.kempen@gmail.com | mvankempen@ca.ibm.com
+# Website: https://markusvankempen.github.io/
+# No bug too small, no syntax too weird.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

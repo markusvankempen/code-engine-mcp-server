@@ -1,6 +1,12 @@
 // Demo: multi-session receipt generator simulating two AI chat threads
 // with multiple tasks per thread, including errors and recovery paths.
 //
+// ## 👤 Autor/Developer
+// Markus van Kempen
+// Email: markus.van.kempen@gmail.com | mvankempen@ca.ibm.com
+// Website: https://markusvankempen.github.io/
+// No bug too small, no syntax too weird.
+//
 // Session A: "Deploy my app to Code Engine" — one user prompt, many tool calls
 // Session B: "Fix the broken deployment and scale it" — follow-up chat
 //

@@ -2,6 +2,12 @@
 // Generates valid signed receipts, then creates intentionally corrupted copies
 // to demonstrate what happens when receipts are tampered with after signing.
 //
+// ## 👤 Autor/Developer
+// Markus van Kempen
+// Email: markus.van.kempen@gmail.com | mvankempen@ca.ibm.com
+// Website: https://markusvankempen.github.io/
+// No bug too small, no syntax too weird.
+//
 // Run: node provenance-addon/demo-tamper-scenarios.mjs
 // Output: provenance-addon/receipts/tamper-demo/
 

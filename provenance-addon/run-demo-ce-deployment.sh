@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 # Generate Code Engine deployment demo receipts for the visualizer.
+#
+# ## 👤 Autor/Developer
+# Markus van Kempen
+# Email: markus.van.kempen@gmail.com | mvankempen@ca.ibm.com
+# Website: https://markusvankempen.github.io/
+# No bug too small, no syntax too weird.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

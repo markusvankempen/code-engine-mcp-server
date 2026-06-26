@@ -4,6 +4,12 @@
 //   wait (fail: image pull) → fix pull secret → redeploy → wait (ok) →
 //   set env vars → scale up → list instances
 //
+// ## 👤 Autor/Developer
+// Markus van Kempen
+// Email: markus.van.kempen@gmail.com | mvankempen@ca.ibm.com
+// Website: https://markusvankempen.github.io/
+// No bug too small, no syntax too weird.
+//
 // Run: node provenance-addon/demo-ce-deployment.mjs
 // Output: provenance-addon/receipts/ce-deployment-demo/
 //
