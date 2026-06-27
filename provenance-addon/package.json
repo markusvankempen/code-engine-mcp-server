@@ -17,6 +17,8 @@
     "demo:ce-deployment": "node demo-ce-deployment.mjs",
     "demo:multi-session": "node demo-multi-session.mjs",
     "demo:tamper": "node demo-tamper-scenarios.mjs",
-    "demo:all": "node example.mjs && node demo-ce-deployment.mjs && node demo-multi-session.mjs && node demo-tamper-scenarios.mjs"
+    "demo:persisted-key": "node demo-persisted-key.mjs",
+    "verify": "node verify-receipt.mjs",
+    "demo:all": "node example.mjs && node demo-ce-deployment.mjs && node demo-multi-session.mjs && node demo-tamper-scenarios.mjs && node demo-persisted-key.mjs"
   }
 }

@@ -11,8 +11,10 @@
 // canonicalJson(). The signature covers that and nothing else. Verifiers must
 // recompute canonicalJson(receipt.claim) and check it against the signature.
 
-import { generateKeyPairSync, sign as edSign, verify as edVerify } from 'node:crypto';
+import { generateKeyPairSync, createPublicKey, createPrivateKey, sign as edSign, verify as edVerify } from 'node:crypto';
 import { randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { canonicalJson, hashCanonical, hashRaw } from './canonical.mjs';
 import { redact } from './redact.mjs';
 
@@ -89,6 +91,93 @@ export function createLocalSigner() {
       );
     },
   };
+}
+
+/**
+ * Create or load a persisted Ed25519 signer from a key directory.
+ *
+ * If the directory contains `private.pem` and `public.pem`, they are loaded.
+ * Otherwise a new key pair is generated and saved. This enables receipts to be
+ * verified across process runs — the same key is reused on subsequent calls.
+ *
+ * Key files:
+ *   <keyDir>/private.pem  — PKCS8 PEM (keep secret, 0600)
+ *   <keyDir>/public.pem   — SPKI PEM (safe to distribute to verifiers)
+ *
+ * @param {string} keyDir  Directory for key files (created if absent).
+ * @returns {Signer & { publicKeyPem: string, keyDir: string }}
+ */
+export function loadOrCreateSigner(keyDir) {
+  mkdirSync(keyDir, { recursive: true });
+  const privPath = join(keyDir, 'private.pem');
+  const pubPath = join(keyDir, 'public.pem');
+
+  let publicKey, privateKey;
+
+  if (existsSync(privPath) && existsSync(pubPath)) {
+    const privPem = readFileSync(privPath, 'utf8');
+    const pubPem = readFileSync(pubPath, 'utf8');
+    privateKey = createPrivateKey(privPem);
+    publicKey = createPublicKey(pubPem);
+  } else {
+    ({ publicKey, privateKey } = generateKeyPairSync('ed25519'));
+    writeFileSync(privPath, privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
+    writeFileSync(pubPath, publicKey.export({ type: 'spki', format: 'pem' }), { mode: 0o644 });
+  }
+
+  const pubDer = publicKey.export({ type: 'spki', format: 'der' });
+  const publicKeyId = hashRaw(pubDer);
+  const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' });
+
+  return {
+    publicKeyId,
+    publicKeyPem,
+    keyDir,
+    sign(data) {
+      return edSign(null, Buffer.from(data, 'utf8'), privateKey).toString('base64');
+    },
+    verify(data, signatureB64) {
+      return edVerify(null, Buffer.from(data, 'utf8'), publicKey, Buffer.from(signatureB64, 'base64'));
+    },
+  };
+}
+
+/**
+ * Verify a receipt using only a public key PEM file (no Signer object needed).
+ * This is the external verification path: an auditor has only the receipt JSON
+ * and the signer's public key file.
+ *
+ * @param {{ claim: Record<string, unknown>, signature: string, public_key_id: string }} receipt
+ * @param {string} publicKeyPemOrPath  PEM string, or path to a .pem file.
+ * @returns {{ ok: boolean, reason?: string }}
+ */
+export function verifyFromPublicKey(receipt, publicKeyPemOrPath) {
+  if (!receipt || typeof receipt !== 'object') {
+    return { ok: false, reason: 'receipt is not an object' };
+  }
+  let pem = publicKeyPemOrPath;
+  if (!pem.includes('-----BEGIN')) {
+    pem = readFileSync(pem, 'utf8');
+  }
+  const publicKey = createPublicKey(pem);
+  const pubDer = publicKey.export({ type: 'spki', format: 'der' });
+  const expectedId = hashRaw(pubDer);
+
+  if (receipt.public_key_id !== expectedId) {
+    return { ok: false, reason: `public_key_id mismatch: receipt has ${receipt.public_key_id}, key is ${expectedId}` };
+  }
+
+  try {
+    const ok = edVerify(
+      null,
+      Buffer.from(canonicalJson(receipt.claim), 'utf8'),
+      publicKey,
+      Buffer.from(receipt.signature, 'base64'),
+    );
+    return ok ? { ok: true } : { ok: false, reason: 'signature does not verify' };
+  } catch (err) {
+    return { ok: false, reason: `verification error: ${err.message}` };
+  }
 }
 
 /**

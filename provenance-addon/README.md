@@ -57,11 +57,15 @@ What it does not prove:
 | `demo-ce-deployment.mjs` | Runnable | Generates CE deployment flow receipts (with failures) |
 | `demo-multi-session.mjs` | Runnable | Generates multi-session / multi-task chat flow receipts |
 | `demo-tamper-scenarios.mjs` | Runnable | Generates valid + tampered receipts for integrity demo |
+| `demo-persisted-key.mjs` | Runnable | P1: persisted key sign + cross-run verify demo |
+| `verify-receipt.mjs` | CLI Tool | Standalone receipt verifier (external verification path) |
 | `run-example.sh` | Script | Bash wrapper for `example.mjs` |
 | `run-demo-ce-deployment.sh` | Script | Bash wrapper for `demo-ce-deployment.mjs` |
 | `run-demo-multi-session.sh` | Script | Bash wrapper for `demo-multi-session.mjs` |
 | `run-demo-tamper.sh` | Script | Bash wrapper for `demo-tamper-scenarios.mjs` |
+| `run-demo-persisted-key.sh` | Script | Bash wrapper for `demo-persisted-key.mjs` |
 | `run-all.sh` | Script | Runs all examples and demo generators |
+| `.keys/` | Generated | Persisted Ed25519 key pair (private.pem + public.pem) |
 | `package.json` | Config | ESM metadata and npm scripts (no external dependencies) |
 | `visualizer.html` | Tool | Standalone browser receipt visualizer |
 | `receipts/` | Output | Demo receipt JSON output directory |
@@ -78,7 +82,7 @@ Reference folders are documentation aids only. The active integration path remai
 |---|---|---|
 | `canonical.mjs` | Deterministic JSON canonicalization and SHA-256 hashing for stable signatures | `canonicalize`, `canonicalJson`, `hashCanonical`, `hashRaw` |
 | `redact.mjs` | Replaces sensitive keys (`api_key`, `token`, `password`, etc.) with `<redacted>` before hashing | `redact`, `DEFAULT_SENSITIVE_KEYS` |
-| `receipt.mjs` | Builds signed claims from tool events; Ed25519 sign/verify; defines `McpReceiptEvent` shape | `buildSignedReceipt`, `verifySignedReceipt`, `createLocalSigner`, `newEventId` |
+| `receipt.mjs` | Builds signed claims from tool events; Ed25519 sign/verify; persisted key management; external verification | `buildSignedReceipt`, `verifySignedReceipt`, `createLocalSigner`, `loadOrCreateSigner`, `verifyFromPublicKey`, `newEventId` |
 | `sink.mjs` | Fail-open emit boundary; no-op sink (default) and file-writing adapter sink | `NoopProvenanceSink`, `BoundaryAttestProvenanceSink`, `emitToolCompleted` |
 
 Typical import chain:
@@ -95,6 +99,8 @@ sink.mjs → receipt.mjs → canonical.mjs + redact.mjs
 | `demo-ce-deployment.mjs` | Simulates a full Code Engine agent pipeline: validate → build → push (fail) → auth fix → deploy → scale | `receipts/ce-deployment-demo/` (~14 receipts) |
 | `demo-multi-session.mjs` | Simulates two AI chat sessions with multiple tasks, self-correction, and cross-session troubleshooting | `receipts/multi-session-demo/` (~20 receipts) |
 | `demo-tamper-scenarios.mjs` | Generates valid receipts then creates intentionally corrupted copies to demonstrate tamper detection | `receipts/tamper-demo/` (10 receipts + public key) |
+| `demo-persisted-key.mjs` | Signs receipts with persisted key, then verifies externally (cross-run P1 demo) | `receipts/persisted-key-demo/` (4 receipts) + `.keys/` |
+| `verify-receipt.mjs` | CLI verifier — checks receipt JSON files against a public key PEM (no Signer needed) | stdout verification report |
 
 ## Installation
 
@@ -443,6 +449,100 @@ The tamper demo automatically generates the public key file. Other demos use eph
 | Request tampered **before** tool ran | No — signer signs what it observed | Needs caller-signed request intent (future) |
 | Attacker has the private key | No — they can sign anything | Key custody problem, not receipt format problem |
 | Receipt file deleted entirely | No — nothing to verify | Needs receipt chaining or transparency log |
+
+## Persisted Key + External Verification (P1)
+
+### Problem
+
+`createLocalSigner()` generates an ephemeral key pair that lives only in process memory. When the process exits, the private key is gone — and so is the ability to verify any receipt it signed.
+
+### Solution
+
+`loadOrCreateSigner(keyDir)` persists the Ed25519 key pair as standard PEM files:
+
+```
+.keys/
+├── private.pem   # PKCS8 — keep secret (mode 0600)
+└── public.pem    # SPKI — distribute to verifiers
+```
+
+On first call the key pair is generated and written. On subsequent calls the existing keys are loaded — same `publicKeyId` every time.
+
+### Cross-run verification workflow
+
+```
+┌─────────────────────────┐      ┌───────────────────────────────┐
+│  Run 1: Signing          │      │  Run 2 (or CI): Verification  │
+│                           │      │                               │
+│  loadOrCreateSigner()    │      │  verifyFromPublicKey(receipt,  │
+│    → .keys/private.pem   │──────│    ".keys/public.pem")        │
+│    → .keys/public.pem    │      │                               │
+│  buildSignedReceipt(ev)  │      │  Returns { ok: true/false }   │
+│    → receipt.json        │      │                               │
+└─────────────────────────┘      └───────────────────────────────┘
+```
+
+### API
+
+```javascript
+import { loadOrCreateSigner, buildSignedReceipt, verifyFromPublicKey } from './receipt.mjs';
+
+// Signing side (process A)
+const signer = loadOrCreateSigner('.keys');
+const receipt = buildSignedReceipt(event, signer);
+
+// Verification side (process B, CI, auditor)
+const result = verifyFromPublicKey(receipt, '.keys/public.pem');
+// → { ok: true } or { ok: false, reason: '...' }
+```
+
+### Standalone CLI verifier
+
+```bash
+# Verify specific receipts
+node verify-receipt.mjs --key .keys/public.pem receipts/persisted-key-demo/*.json
+
+# Verify using key directory
+node verify-receipt.mjs --key-dir .keys receipts/persisted-key-demo/01-write_or_modify_file-executed.json
+```
+
+Exit codes: `0` = all verified, `1` = one or more failed, `2` = usage error.
+
+### Run the demo
+
+```bash
+# Bash script
+./run-demo-persisted-key.sh
+
+# npm script
+npm run demo:persisted-key
+
+# Direct
+node demo-persisted-key.mjs
+```
+
+The demo:
+1. Creates/loads a persisted key pair in `.keys/`
+2. Signs 4 receipts (file writes + CE deployment, including a failure)
+3. Verifies all receipts using only the public key (simulating a separate process)
+4. Tampers one receipt and shows detection
+
+### Security notes
+
+- **Private key custody:** `.keys/private.pem` must be protected (0600 permissions). Anyone with this file can forge valid-looking receipts.
+- **Key rotation:** Not yet implemented. For production, rotate keys periodically and record the `publicKeyId` in each receipt for key-to-receipt binding.
+- **KMS/HSM:** `loadOrCreateSigner()` is for dev/PoC. Production deployments should use a KMS or HSM-backed signer with the same interface.
+- **Distribution:** Share `public.pem` with verifiers. The `publicKeyId` (SHA-256 of the DER encoding) acts as a stable fingerprint.
+
+### .gitignore
+
+The `.keys/` directory should typically be in `.gitignore` (private keys should not be committed):
+
+```
+.keys/
+```
+
+For demos, the generated keys are dev-only and safe to regenerate.
 
 ## Failure Model
 
