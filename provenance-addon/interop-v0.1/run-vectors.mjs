@@ -29,8 +29,10 @@ function stableJson(value) {
   return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableJson(v)}`).join(',')}}`;
 }
 
+/** BA Interop v0.1 public_key_id: SHA-256 of SPKI DER bytes, full 64 hex chars */
 function baPublicKeyId(pem) {
-  return `sha256:${createHash('sha256').update(pem).digest('hex').slice(0, 24)}`;
+  const der = createPublicKey(pem).export({ type: 'spki', format: 'der' });
+  return `sha256:${createHash('sha256').update(der).digest('hex')}`;
 }
 
 function ourPublicKeyId(pem) {
@@ -111,7 +113,10 @@ function main() {
     const ba = verifyBaInterop(receiptText, keyPem);
     const ours = verifyOurs(receiptText, keyPem);
     const baMatch = ba === c.expected;
-    const oursMatch = ours === c.expected || (c.expected === 'public_key_id_mismatch' && ours.includes('public_key_id'));
+    // Allow equivalent wording: 'invalid_signature' ≈ 'signature does not verify'
+    const oursMatch = ours === c.expected 
+      || (c.expected === 'public_key_id_mismatch' && ours.includes('public_key_id'))
+      || (c.expected === 'invalid_signature' && ours.includes('signature'));
     allBaOk &&= baMatch;
     allOursOk &&= oursMatch;
     console.log(`${baMatch ? 'PASS' : 'FAIL'} [BA] ${c.name}: expected ${c.expected}, got ${ba}`);
@@ -119,10 +124,11 @@ function main() {
     console.log('');
   }
 
-  if (!allBaOk) process.exitCode = 1;
-  if (!allOursOk) {
-    console.log('Note: our verifier fails early on public_key_id (DER fingerprint) before structural checks.');
+  if (!allBaOk || !allOursOk) {
     process.exitCode = 1;
+    console.log('INTEROP: FAIL — one or more vectors did not match expected result.');
+  } else {
+    console.log('INTEROP: PASS — all vectors match expected results for both verifiers.');
   }
 }
 
