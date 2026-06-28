@@ -23,7 +23,9 @@ import { loadOrCreateSigner, buildSignedReceipt, verifyFromPublicKey, newEventId
 
 const KEY_DIR = join(import.meta.dirname, '.keys');
 const RECEIPT_DIR = join(import.meta.dirname, 'receipts', 'persisted-key-demo');
+const REVERSE_FIXTURE_DIR = join(import.meta.dirname, 'interop-v0.1', 'ce-reverse-fixtures');
 mkdirSync(RECEIPT_DIR, { recursive: true });
+mkdirSync(REVERSE_FIXTURE_DIR, { recursive: true });
 
 // ─── Phase 1: Sign ────────────────────────────────────────────────────────────
 console.log('═══════════════════════════════════════════════════════════');
@@ -98,6 +100,10 @@ for (const [i, baseEvent] of events.entries()) {
   console.log(`  Signed: ${filename}`);
 }
 console.log(`\n  → ${signedReceipts.length} receipts written to ${RECEIPT_DIR}\n`);
+
+// Publish public key for reverse interop (private key stays in gitignored .keys/)
+writeFileSync(join(REVERSE_FIXTURE_DIR, 'public.pem'), readFileSync(join(KEY_DIR, 'public.pem')));
+console.log(`  → public key copied to ${REVERSE_FIXTURE_DIR}/public.pem (reverse interop)\n`);
 
 // ─── Phase 2: Verify (simulated separate process) ────────────────────────────
 console.log('═══════════════════════════════════════════════════════════');
