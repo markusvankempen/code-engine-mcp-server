@@ -1,0 +1,22 @@
+{
+  "claim": {
+    "receipt_version": "0.1",
+    "receipt_role": "client_observed",
+    "event_id": "bd798ac1-9fa1-4aa9-a33b-37159e192dfa",
+    "timestamp": "2026-06-30T13:26:01.398Z",
+    "tool_name": "workspace.write_or_modify_file",
+    "action_type": "write_or_modify_file",
+    "status": "executed",
+    "target_ref": "path:Dockerfile",
+    "session_id": "session:artifact-demo-20260630",
+    "task_id": "task:write-dockerfile",
+    "artifact_hash": "sha256:c6143e514557093362022244c84d6b856ffa28e55d91d0bbb73d0c3aa7330879",
+    "input_hash": "sha256:d48afda45c3127a8e4577441df770a6471f8150bc7087f18099578f09f531989",
+    "output_hash": "sha256:eb50a266b58c0744fcdb36b80257385783d33cacf13b3c67719977226cf3f57a",
+    "error_hash": null,
+    "trace_ref": "session:artifact-demo-20260630",
+    "previous_receipt_hash": null
+  },
+  "signature": "1YUaL1zisgLZXq3zy+ldYdAy9RVypyTkRvH9Mi16IfukYP/2KmfVLa2ewmY9PI24sbHbkCt/LQ7Z+CEttgnCBw==",
+  "public_key_id": "sha256:fcd37a7b8ddfdee30145a26e7f31ac7e28e14c1db4d720bb137d28e2d72770d3"
+}

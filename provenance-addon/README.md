@@ -31,6 +31,24 @@ This helps when evidence must be checked outside the original runtime.
 - Redaction-first: sensitive data is redacted before hashing.
 - Deterministic: canonical JSON is used so hashes/signatures are stable.
 
+## BoundaryAttest Interop (upstream)
+
+This addon implements [BoundaryAttest Interop Profile v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/main/docs/interop-profile-v0.1.md) locally — **no BoundaryAttest npm dependency**. Two-way interop is verified:
+
+- CE verifies BA test vectors (`interop-v0.1/run-vectors.mjs`) — 6/6 pass
+- BA verifies CE reverse fixtures (`interop-v0.1/ce-reverse-fixtures/`) — 4/4 pass
+
+Upstream references (BoundaryAttest `main`, docs slice ~commit `1ea9864`):
+
+| Document | Purpose |
+|---|---|
+| [Interop Profile v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/main/docs/interop-profile-v0.1.md) | Portable envelope + minimal vs extended claim |
+| [Dependency-free adapter guide](https://github.com/cullenmeyers/BoundaryAttest/blob/main/docs/interop-adapter-guide-v0.1.md) | Implement profile without BA runtime import |
+| [Verification limits v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/main/docs/interop-verification-limits-v0.1.md) | What verification proves and does not prove |
+| [JSON Schema](https://github.com/cullenmeyers/BoundaryAttest/blob/main/docs/schemas/interop-receipt-v0.1.schema.json) | Envelope + claim shape |
+
+Code Engine MCP adds **extended claim fields** (`tool_name`, `session_id`, `task_id`, `input_hash`, etc.) inside `claim` per the adapter guide. Verifiers ignore unknown fields after required checks pass.
+
 ## What It Does and Does Not Prove
 
 What it proves:
@@ -58,12 +76,16 @@ What it does not prove:
 | `demo-multi-session.mjs` | Runnable | Generates multi-session / multi-task chat flow receipts |
 | `demo-tamper-scenarios.mjs` | Runnable | Generates valid + tampered receipts for integrity demo |
 | `demo-persisted-key.mjs` | Runnable | P1: persisted key sign + cross-run verify demo |
+| `demo-artifact-hash.mjs` | Runnable | P2: artifact hash verification (receipt + file binding) |
+| `artifact.mjs` | Library | Verify `claim.artifact_hash` against file/patch bytes |
 | `verify-receipt.mjs` | CLI Tool | Standalone receipt verifier (external verification path) |
+| `verify-artifact.mjs` | CLI Tool | Verify artifact file bytes against `claim.artifact_hash` |
 | `run-example.sh` | Script | Bash wrapper for `example.mjs` |
 | `run-demo-ce-deployment.sh` | Script | Bash wrapper for `demo-ce-deployment.mjs` |
 | `run-demo-multi-session.sh` | Script | Bash wrapper for `demo-multi-session.mjs` |
 | `run-demo-tamper.sh` | Script | Bash wrapper for `demo-tamper-scenarios.mjs` |
 | `run-demo-persisted-key.sh` | Script | Bash wrapper for `demo-persisted-key.mjs` |
+| `run-demo-artifact-hash.sh` | Script | Bash wrapper for `demo-artifact-hash.mjs` |
 | `run-all.sh` | Script | Runs all examples and demo generators |
 | `.keys/` | Generated | Persisted Ed25519 key pair (private.pem + public.pem) |
 | `package.json` | Config | ESM metadata and npm scripts (no external dependencies) |
@@ -83,6 +105,7 @@ Reference folders are documentation aids only. The active integration path remai
 | `canonical.mjs` | Deterministic JSON canonicalization and SHA-256 hashing for stable signatures | `canonicalize`, `canonicalJson`, `hashCanonical`, `hashRaw` |
 | `redact.mjs` | Replaces sensitive keys (`api_key`, `token`, `password`, etc.) with `<redacted>` before hashing | `redact`, `DEFAULT_SENSITIVE_KEYS` |
 | `receipt.mjs` | Builds signed claims from tool events; Ed25519 sign/verify; interop v0.1 verification with normative failure codes | `buildSignedReceipt`, `verifySignedReceipt`, `verifyInteropReceipt`, `verifyInteropReceiptText`, `verifyFromPublicKey`, `interopPublicKeyId`, `createLocalSigner`, `loadOrCreateSigner`, `newEventId` |
+| `artifact.mjs` | Policy-layer check: `hashRaw(file bytes) === claim.artifact_hash` | `verifyArtifactHash`, `verifyReceiptAndArtifact` |
 | `sink.mjs` | Fail-open emit boundary; no-op sink (default) and file-writing adapter sink | `NoopProvenanceSink`, `BoundaryAttestProvenanceSink`, `emitToolCompleted` |
 
 Typical import chain:
@@ -100,7 +123,9 @@ sink.mjs → receipt.mjs → canonical.mjs + redact.mjs
 | `demo-multi-session.mjs` | Simulates two AI chat sessions with multiple tasks, self-correction, and cross-session troubleshooting | `receipts/multi-session-demo/` (~20 receipts) |
 | `demo-tamper-scenarios.mjs` | Generates valid receipts then creates intentionally corrupted copies to demonstrate tamper detection | `receipts/tamper-demo/` (10 receipts + public key) |
 | `demo-persisted-key.mjs` | Signs receipts with persisted key, then verifies externally (cross-run P1 demo) | `receipts/persisted-key-demo/` (4 receipts) + `.keys/` |
-| `verify-receipt.mjs` | CLI verifier — checks receipt JSON files against a public key PEM (no Signer needed) | stdout verification report |
+| `demo-artifact-hash.mjs` | Signs receipt with `artifact_hash`, verifies file match + tamper detection | `receipts/artifact-demo/` |
+| `verify-receipt.mjs` | CLI verifier — interop v0.1 signature verification | stdout verification report |
+| `verify-artifact.mjs` | CLI — artifact bytes vs `claim.artifact_hash` (optional `--key` for full check) | stdout verification report |
 
 ## Installation
 
@@ -543,6 +568,58 @@ The `.keys/` directory should typically be in `.gitignore` (private keys should 
 ```
 
 For demos, the generated keys are dev-only and safe to regenerate.
+
+## Artifact Hash Verification (P2)
+
+### What it adds
+
+Interop verification proves the **signed claim** was not altered. Artifact hash verification adds a second check: the **file on disk** matches the `artifact_hash` bound in that claim at signing time.
+
+```
+Signing:  artifact_content → hashRaw() → claim.artifact_hash  (raw bytes never in claim)
+Verify:   hashRaw(file bytes) === claim.artifact_hash
+```
+
+This is a **policy-layer check** (not mandatory interop crypto). BA verification limits explicitly keep artifact availability outside mandatory v0.1 verification — but for Code Engine MCP file/patch/scaffold actions, this binding is high value.
+
+### Failure codes
+
+| Code | Meaning |
+|---|---|
+| `artifact_hash_missing` | Claim has no `artifact_hash` to compare |
+| `artifact_hash_mismatch` | File bytes do not match the signed hash |
+| `artifact_file_not_found` | Path does not exist |
+
+### API
+
+```javascript
+import { verifyArtifactHash, verifyReceiptAndArtifact } from './artifact.mjs';
+import { verifyInteropReceipt } from './receipt.mjs';
+
+// Artifact only (auditor has receipt + file)
+verifyArtifactHash(receipt, './Dockerfile');
+
+// Signature + artifact (auditor has receipt + file + public key)
+verifyReceiptAndArtifact(receipt, publicPem, './Dockerfile', verifyInteropReceipt);
+```
+
+### CLI
+
+```bash
+# Artifact hash only
+node verify-artifact.mjs --receipt receipts/artifact-demo/write-dockerfile.json --file receipts/artifact-demo/Dockerfile
+
+# Signature + artifact
+node verify-artifact.mjs --receipt receipts/artifact-demo/write-dockerfile.json \
+  --file receipts/artifact-demo/Dockerfile --key receipts/artifact-demo/public.pem
+```
+
+### Demo
+
+```bash
+./run-demo-artifact-hash.sh
+# or: npm run demo:artifact-hash
+```
 
 ## Failure Model
 
