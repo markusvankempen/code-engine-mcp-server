@@ -19,6 +19,9 @@
     "demo:tamper": "node demo-tamper-scenarios.mjs",
     "demo:persisted-key": "node demo-persisted-key.mjs",
     "verify": "node verify-receipt.mjs",
+    "interop:vectors": "node interop-v0.1/run-vectors.mjs",
+    "interop:ce-reverse": "node interop-v0.1/run-ce-reverse.mjs",
+    "interop:all": "node interop-v0.1/run-vectors.mjs && node interop-v0.1/run-ce-reverse.mjs",
     "demo:all": "node example.mjs && node demo-ce-deployment.mjs && node demo-multi-session.mjs && node demo-tamper-scenarios.mjs && node demo-persisted-key.mjs"
   }
 }

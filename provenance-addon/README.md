@@ -82,7 +82,7 @@ Reference folders are documentation aids only. The active integration path remai
 |---|---|---|
 | `canonical.mjs` | Deterministic JSON canonicalization and SHA-256 hashing for stable signatures | `canonicalize`, `canonicalJson`, `hashCanonical`, `hashRaw` |
 | `redact.mjs` | Replaces sensitive keys (`api_key`, `token`, `password`, etc.) with `<redacted>` before hashing | `redact`, `DEFAULT_SENSITIVE_KEYS` |
-| `receipt.mjs` | Builds signed claims from tool events; Ed25519 sign/verify; persisted key management; external verification | `buildSignedReceipt`, `verifySignedReceipt`, `createLocalSigner`, `loadOrCreateSigner`, `verifyFromPublicKey`, `newEventId` |
+| `receipt.mjs` | Builds signed claims from tool events; Ed25519 sign/verify; interop v0.1 verification with normative failure codes | `buildSignedReceipt`, `verifySignedReceipt`, `verifyInteropReceipt`, `verifyInteropReceiptText`, `verifyFromPublicKey`, `interopPublicKeyId`, `createLocalSigner`, `loadOrCreateSigner`, `newEventId` |
 | `sink.mjs` | Fail-open emit boundary; no-op sink (default) and file-writing adapter sink | `NoopProvenanceSink`, `BoundaryAttestProvenanceSink`, `emitToolCompleted` |
 
 Typical import chain:

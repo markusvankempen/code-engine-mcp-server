@@ -19,7 +19,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { verifyFromPublicKey } from './receipt.mjs';
+import { verifyInteropReceiptText } from './receipt.mjs';
 
 function usage() {
   console.error(`Usage:
@@ -81,13 +81,8 @@ for (const rPath of receiptPaths) {
     continue;
   }
   try {
-    const raw = JSON.parse(readFileSync(rPath, 'utf8'));
-    if (!raw || !raw.claim) {
-      console.log(`  ⚠️  ${filename} — not a valid receipt (no claim field)`);
-      errors++;
-      continue;
-    }
-    const result = verifyFromPublicKey(raw, pem);
+    const receiptText = readFileSync(rPath, 'utf8');
+    const result = verifyInteropReceiptText(receiptText, pem);
     if (result.ok) {
       console.log(`  ✅ ${filename} — verified`);
       passed++;

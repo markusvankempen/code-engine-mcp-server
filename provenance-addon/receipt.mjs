@@ -142,42 +142,150 @@ export function loadOrCreateSigner(keyDir) {
   };
 }
 
-/**
- * Verify a receipt using only a public key PEM file (no Signer object needed).
- * This is the external verification path: an auditor has only the receipt JSON
- * and the signer's public key file.
- *
- * @param {{ claim: Record<string, unknown>, signature: string, public_key_id: string }} receipt
- * @param {string} publicKeyPemOrPath  PEM string, or path to a .pem file.
- * @returns {{ ok: boolean, reason?: string }}
- */
-export function verifyFromPublicKey(receipt, publicKeyPemOrPath) {
-  if (!receipt || typeof receipt !== 'object') {
-    return { ok: false, reason: 'receipt is not an object' };
-  }
-  let pem = publicKeyPemOrPath;
-  if (!pem.includes('-----BEGIN')) {
-    pem = readFileSync(pem, 'utf8');
-  }
-  const publicKey = createPublicKey(pem);
-  const pubDer = publicKey.export({ type: 'spki', format: 'der' });
-  const expectedId = hashRaw(pubDer);
+const INTEROP_REQUIRED_TOP_LEVEL = ['claim', 'signature', 'public_key_id'];
+const INTEROP_REQUIRED_CLAIM = [
+  'receipt_version',
+  'receipt_role',
+  'event_id',
+  'timestamp',
+  'action_type',
+  'status',
+];
 
-  if (receipt.public_key_id !== expectedId) {
-    return { ok: false, reason: `public_key_id mismatch: receipt has ${receipt.public_key_id}, key is ${expectedId}` };
+/** @param {unknown} value */
+function isRecord(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** @param {Record<string, unknown>} obj @param {string} field */
+function hasOwn(obj, field) {
+  return Object.prototype.hasOwnProperty.call(obj, field);
+}
+
+/** @param {string} reason @returns {{ ok: false, reason: string }} */
+function fail(reason) {
+  return { ok: false, reason };
+}
+
+/**
+ * @param {string} publicKeyPemOrPath
+ * @returns {string}
+ */
+function loadPublicKeyPem(publicKeyPemOrPath) {
+  if (publicKeyPemOrPath.includes('-----BEGIN')) {
+    return publicKeyPemOrPath;
+  }
+  return readFileSync(publicKeyPemOrPath, 'utf8');
+}
+
+/**
+ * BoundaryAttest Interop Profile v0.1 public key fingerprint (SPKI DER SHA-256).
+ * @param {string} publicKeyPemOrPath
+ * @returns {string}
+ */
+export function interopPublicKeyId(publicKeyPemOrPath) {
+  const pem = loadPublicKeyPem(publicKeyPemOrPath);
+  const der = createPublicKey(pem).export({ type: 'spki', format: 'der' });
+  return hashRaw(der);
+}
+
+/**
+ * Structural checks for Interop Profile v0.1 (no signature verification).
+ * @param {unknown} receipt
+ * @returns {{ ok: false, reason: string } | null}
+ */
+function verifyInteropStructure(receipt) {
+  if (!isRecord(receipt)) {
+    return fail('invalid_receipt');
+  }
+  for (const field of INTEROP_REQUIRED_TOP_LEVEL) {
+    if (!hasOwn(receipt, field)) {
+      return fail(`missing_top_level_field:${field}`);
+    }
+  }
+  for (const field of Object.keys(receipt)) {
+    if (!INTEROP_REQUIRED_TOP_LEVEL.includes(field)) {
+      return fail(`unexpected_top_level_field:${field}`);
+    }
+  }
+  if (!isRecord(receipt.claim)) {
+    return fail('claim_not_object');
+  }
+  if (typeof receipt.signature !== 'string' || typeof receipt.public_key_id !== 'string') {
+    return fail('invalid_receipt');
+  }
+  for (const field of INTEROP_REQUIRED_CLAIM) {
+    if (!hasOwn(receipt.claim, field)) {
+      return fail(`missing_claim_field:${field}`);
+    }
+  }
+  if (receipt.claim.receipt_version !== '0.1') {
+    return fail('unsupported_version');
+  }
+  const role = receipt.claim.receipt_role;
+  if (role !== 'client_observed' && role !== 'server_attested') {
+    return fail('unsupported_receipt_role');
+  }
+  return null;
+}
+
+/**
+ * Verify a receipt against BoundaryAttest Interop Profile v0.1 expectations.
+ * Uses normative failure reason codes documented upstream.
+ *
+ * @param {unknown} receipt
+ * @param {string} publicKeyPemOrPath  PEM string, or path to a .pem file.
+ * @returns {{ ok: true } | { ok: false, reason: string }}
+ */
+export function verifyInteropReceipt(receipt, publicKeyPemOrPath) {
+  const structural = verifyInteropStructure(receipt);
+  if (structural) return structural;
+
+  const pem = loadPublicKeyPem(publicKeyPemOrPath);
+  if (/** @type {{ public_key_id: string }} */ (receipt).public_key_id !== interopPublicKeyId(pem)) {
+    return fail('public_key_id_mismatch');
   }
 
   try {
+    const publicKey = createPublicKey(pem);
     const ok = edVerify(
       null,
-      Buffer.from(canonicalJson(receipt.claim), 'utf8'),
+      Buffer.from(canonicalJson(/** @type {{ claim: Record<string, unknown> }} */ (receipt).claim), 'utf8'),
       publicKey,
-      Buffer.from(receipt.signature, 'base64'),
+      Buffer.from(/** @type {{ signature: string }} */ (receipt).signature, 'base64'),
     );
-    return ok ? { ok: true } : { ok: false, reason: 'signature does not verify' };
-  } catch (err) {
-    return { ok: false, reason: `verification error: ${err.message}` };
+    return ok ? { ok: true } : fail('invalid_signature');
+  } catch {
+    return fail('invalid_signature');
   }
+}
+
+/**
+ * Parse receipt JSON and verify against Interop Profile v0.1.
+ * @param {string} receiptText
+ * @param {string} publicKeyPemOrPath
+ * @returns {{ ok: true } | { ok: false, reason: string }}
+ */
+export function verifyInteropReceiptText(receiptText, publicKeyPemOrPath) {
+  let parsed;
+  try {
+    parsed = JSON.parse(receiptText);
+  } catch {
+    return fail('invalid_json');
+  }
+  return verifyInteropReceipt(parsed, publicKeyPemOrPath);
+}
+
+/**
+ * Verify a receipt using only a public key PEM file (no Signer object needed).
+ * Alias for {@link verifyInteropReceipt} — external verification path.
+ *
+ * @param {unknown} receipt
+ * @param {string} publicKeyPemOrPath  PEM string, or path to a .pem file.
+ * @returns {{ ok: true } | { ok: false, reason: string }}
+ */
+export function verifyFromPublicKey(receipt, publicKeyPemOrPath) {
+  return verifyInteropReceipt(receipt, publicKeyPemOrPath);
 }
 
 /**
@@ -257,14 +365,13 @@ export function buildSignedReceipt(event, signer, opts = {}) {
  * @returns {{ ok: boolean, reason?: string }}
  */
 export function verifySignedReceipt(receipt, signer) {
-  if (!receipt || typeof receipt !== 'object') {
-    return { ok: false, reason: 'receipt is not an object' };
-  }
+  const structural = verifyInteropStructure(receipt);
+  if (structural) return structural;
   if (receipt.public_key_id !== signer.publicKeyId) {
-    return { ok: false, reason: 'public_key_id does not match expected signer' };
+    return fail('public_key_id_mismatch');
   }
   const ok = signer.verify(canonicalJson(receipt.claim), receipt.signature);
-  return ok ? { ok: true } : { ok: false, reason: 'signature does not verify' };
+  return ok ? { ok: true } : fail('invalid_signature');
 }
 
 /** Generate a fresh event id (UUID v4). */
