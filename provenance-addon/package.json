@@ -24,6 +24,7 @@
     "interop:vectors": "node interop-v0.1/run-vectors.mjs",
     "interop:ce-reverse": "node interop-v0.1/run-ce-reverse.mjs",
     "interop:all": "node interop-v0.1/run-vectors.mjs && node interop-v0.1/run-ce-reverse.mjs",
+    "interop:ci": "npm run interop:all && node verify-artifact.mjs --receipt receipts/artifact-demo/write-dockerfile.json --file receipts/artifact-demo/Dockerfile --key receipts/artifact-demo/public.pem",
     "demo:all": "node example.mjs && node demo-ce-deployment.mjs && node demo-multi-session.mjs && node demo-tamper-scenarios.mjs && node demo-persisted-key.mjs"
   }
 }

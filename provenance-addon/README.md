@@ -33,19 +33,21 @@ This helps when evidence must be checked outside the original runtime.
 
 ## BoundaryAttest Interop (upstream)
 
-This addon implements [BoundaryAttest Interop Profile v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/main/docs/interop-profile-v0.1.md) locally — **no BoundaryAttest npm dependency**. Two-way interop is verified:
+**Status:** experimental v0.1 — interop + artifact checks run in [CI](../../.github/workflows/provenance-interop.yml) on changes to `provenance-addon/`.
+
+This addon implements [BoundaryAttest Interop Profile v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/1ea9864/docs/interop-profile-v0.1.md) locally — **no BoundaryAttest npm dependency**. Two-way interop is verified:
 
 - CE verifies BA test vectors (`interop-v0.1/run-vectors.mjs`) — 6/6 pass
 - BA verifies CE reverse fixtures (`interop-v0.1/ce-reverse-fixtures/`) — 4/4 pass
 
-Upstream references (BoundaryAttest `main`, docs slice ~commit `1ea9864`):
+Upstream references pinned to BoundaryAttest docs slice commit [`1ea9864`](https://github.com/cullenmeyers/BoundaryAttest/commit/1ea9864):
 
 | Document | Purpose |
 |---|---|
-| [Interop Profile v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/main/docs/interop-profile-v0.1.md) | Portable envelope + minimal vs extended claim |
-| [Dependency-free adapter guide](https://github.com/cullenmeyers/BoundaryAttest/blob/main/docs/interop-adapter-guide-v0.1.md) | Implement profile without BA runtime import |
-| [Verification limits v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/main/docs/interop-verification-limits-v0.1.md) | What verification proves and does not prove |
-| [JSON Schema](https://github.com/cullenmeyers/BoundaryAttest/blob/main/docs/schemas/interop-receipt-v0.1.schema.json) | Envelope + claim shape |
+| [Interop Profile v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/1ea9864/docs/interop-profile-v0.1.md) | Portable envelope + minimal vs extended claim |
+| [Dependency-free adapter guide](https://github.com/cullenmeyers/BoundaryAttest/blob/1ea9864/docs/interop-adapter-guide-v0.1.md) | Implement profile without BA runtime import |
+| [Verification limits v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/1ea9864/docs/interop-verification-limits-v0.1.md) | What verification proves and does not prove |
+| [JSON Schema](https://github.com/cullenmeyers/BoundaryAttest/blob/1ea9864/docs/schemas/interop-receipt-v0.1.schema.json) | Envelope + claim shape |
 
 Code Engine MCP adds **extended claim fields** (`tool_name`, `session_id`, `task_id`, `input_hash`, etc.) inside `claim` per the adapter guide. Verifiers ignore unknown fields after required checks pass.
 

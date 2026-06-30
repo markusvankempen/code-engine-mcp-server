@@ -1,0 +1,28 @@
+name: Provenance interop CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'provenance-addon/**'
+      - '.github/workflows/provenance-interop.yml'
+  pull_request:
+    paths:
+      - 'provenance-addon/**'
+      - '.github/workflows/provenance-interop.yml'
+
+jobs:
+  interop:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: provenance-addon
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Interop + artifact verification (CE CI gate)
+        run: npm run interop:ci
