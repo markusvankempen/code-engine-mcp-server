@@ -161,15 +161,15 @@ Code Engine requires containers to listen on **port 8080**. The Dockerfile patch
 
 With `MCP_ACTIVITY_ENABLED=true` in your MCP server env, open the **MCP Activity Dashboard** (VS Code extension or `npm run dashboard`) while running the one-shot prompt above. You will see `proc_build_push_deploy` progress through build, push, secret refresh, and ready-poll steps with the live app URL in the task-outcome banner.
 
-See [main README — MCP Activity Dashboard](../../README.md#-mcp-activity-dashboard-v140).
+See [main README — MCP Activity Dashboard](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/README.md#optional-mcp-activity-dashboard).
 
 ---
 
 ## Optional addon: Provenance
 
-> Not required for deployment. See [startrek-splash documented MCP flow](../startrek-splash/README.md#documented-example-flow-verified-deploy) for a full example including optional `provenance_receipts`.
+> Not required for deployment. See [startrek-splash documented MCP flow](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/examples/startrek-splash/README.md#documented-example-flow-verified-deploy) for a full example including optional `provenance_receipts`.
 
-When `PROVENANCE_ENABLED=true`, `proc_build_push_deploy` returns signed receipt paths in `provenance_receipts`. [Chat prompts](../../provenance-addon/PROVENANCE-CHAT-COMMANDS.md) · [addon README](../../provenance-addon/README.md)
+When `PROVENANCE_ENABLED=true`, `proc_build_push_deploy` returns signed receipt paths in `provenance_receipts`. [Chat prompts](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-CHAT-COMMANDS.md) · [addon README](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/README.md)
 
 ---
 

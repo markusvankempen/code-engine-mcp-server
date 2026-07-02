@@ -303,7 +303,7 @@ Install from [nodejs.org](https://nodejs.org) if missing.
 
 ### App revision stuck in `no_revision_ready`
 
-See [MCP_INSPECTOR_TROUBLESHOOTING.md](./MCP_INSPECTOR_TROUBLESHOOTING.md) — the two most common causes are a stale ICR pull secret and an nginx port not rewritten in the Dockerfile.
+See [MCP Inspector Troubleshooting](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/MCP_INSPECTOR_TROUBLESHOOTING.md) — the two most common causes are a stale ICR pull secret and an nginx port not rewritten in the Dockerfile.
 
 ### Activity Dashboard shows no sessions
 

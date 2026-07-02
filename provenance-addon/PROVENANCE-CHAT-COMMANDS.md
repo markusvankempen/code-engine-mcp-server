@@ -2,17 +2,17 @@
 
 Natural-language prompts for the **optional** provenance addon (`provenance-addon/`). This is **not** required for Code Engine MCP deploy, build, or manage workflows — enable it only when you want signed receipts.
 
-**Status:** experimental v0.1 — supplemental evidence, not a security guarantee. See [README](./README.md#what-it-does-and-does-not-prove).
+**Status:** experimental v0.1 — supplemental evidence, not a security guarantee. See [README](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/README.md#what-it-does-and-does-not-prove).
 
-**Core deploy docs (no provenance):** [startrek-splash README](../examples/startrek-splash/README.md) · [starwars-splash README](../examples/starwars-splash/README.md)
+**Core deploy docs (no provenance):** [startrek-splash README](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/examples/startrek-splash/README.md) · [starwars-splash README](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/examples/starwars-splash/README.md)
 
-**Related:** [PROVENANCE-E2E-FLOW.md](./PROVENANCE-E2E-FLOW.md) · [README](./README.md)
+**Related:** [PROVENANCE-E2E-FLOW.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-E2E-FLOW.md) · [README](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/README.md)
 
 ---
 
 ## Documented example: startrek-splash MCP deploy + receipts
 
-Reference run using **only** MCP tool `proc_build_push_deploy` (July 2026). Full walkthrough: [examples/startrek-splash/README.md](../examples/startrek-splash/README.md#documented-example-flow-verified-deploy).
+Reference run using **only** MCP tool `proc_build_push_deploy` (July 2026). Full walkthrough: [examples/startrek-splash/README.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/examples/startrek-splash/README.md#documented-example-flow-verified-deploy).
 
 **Chat prompt:**
 
@@ -121,7 +121,7 @@ Provenance is **off by default**. Toggle it in `code-engine-mcp-server/.env`, th
 >
 > Align `.cursor/mcp.json` env with the same values, then rebuild and tell me when to restart MCP.
 
-**Example `.env` block** (see also [`.env.example`](../.env.example)):
+**Example `.env` block** (see also [`.env.example`](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/.env.example)):
 
 ```bash
 PROVENANCE_ENABLED=true
@@ -224,7 +224,7 @@ Receipt output: `PROVENANCE_RECEIPTS_DIR` (default `provenance-addon/receipts/li
 
 See **[Documented example: startrek-splash MCP deploy + receipts](#documented-example-startrek-splash-mcp-deploy--receipts)** above for the verified run (URL, receipts, verification output).
 
-Same MCP-only flow for [`examples/startrek-splash`](../examples/startrek-splash/) — core deploy steps are in the example README; this section is only if provenance is enabled.
+Same MCP-only flow for [`examples/startrek-splash`](https://github.com/markusvankempen/code-engine-mcp-server/tree/main/examples/startrek-splash) — core deploy steps are in the example README; this section is only if provenance is enabled.
 
 **Ask your assistant (one-shot):**
 

@@ -122,7 +122,7 @@ flowchart LR
 
 > Using only Code Engine MCP tools, deploy `examples/startrek-splash` to Code Engine project — show provenance receipts and the live app URL.
 
-> **Tip (v1.4.0):** Open the MCP Activity Dashboard with `MCP_ACTIVITY_ENABLED=true` to watch the same deploy on a live timeline. See [main README](../../README.md#-mcp-activity-dashboard-v140).
+> **Tip (v1.4.0):** Open the MCP Activity Dashboard with `MCP_ACTIVITY_ENABLED=true` to watch the same deploy on a live timeline. See [main README — MCP Activity Dashboard](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/README.md#optional-mcp-activity-dashboard).
 
 **MCP arguments (example):**
 
@@ -218,7 +218,7 @@ RUN sed -i 's/listen[[:space:]]*80;/listen 8080;/g' /etc/nginx/conf.d/default.co
  && sed -i 's/listen[[:space:]]*\[::\]:80;/listen [::]:8080;/g' /etc/nginx/conf.d/default.conf
 ```
 
-See [docs/MCP_INSPECTOR_TROUBLESHOOTING.md](../../docs/MCP_INSPECTOR_TROUBLESHOOTING.md) for the full diagnosis guide.
+See [MCP Inspector Troubleshooting](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/MCP_INSPECTOR_TROUBLESHOOTING.md) for the full diagnosis guide.
 
 ---
 
@@ -259,6 +259,6 @@ Restart the MCP server after changing env.
 
 **Further reading (addon only):**
 
-- [provenance-addon/README.md](../../provenance-addon/README.md)
-- [provenance-addon/PROVENANCE-CHAT-COMMANDS.md](../../provenance-addon/PROVENANCE-CHAT-COMMANDS.md) — full prompt catalog
-- [provenance-addon/visualizer.html](../../provenance-addon/visualizer.html) — inspect receipts in a browser
+- [provenance-addon/README.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/README.md)
+- [provenance-addon/PROVENANCE-CHAT-COMMANDS.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-CHAT-COMMANDS.md) — full prompt catalog
+- [provenance-addon/visualizer.html](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/visualizer.html) — inspect receipts in a browser

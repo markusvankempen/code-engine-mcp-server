@@ -2,9 +2,9 @@
 
 This document walks through one complete provenance path: an MCP tool writes a file, a signed receipt is produced, and the receipt is verified later — including which **Code Engine MCP (CE)** code runs, which **BoundaryAttest (BA)** spec/fixtures apply, and example data at each step.
 
-**Status:** experimental v0.1 interop — see [BoundaryAttest Interop](./README.md#boundaryattest-interop-upstream) in the main README.
+**Status:** experimental v0.1 interop — see [BoundaryAttest Interop](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/README.md#boundaryattest-interop-upstream) in the main README.
 
-**Chat prompts:** [PROVENANCE-CHAT-COMMANDS.md](./PROVENANCE-CHAT-COMMANDS.md) — natural language to enable provenance, deploy with validation, and verify receipts.
+**Chat prompts:** [PROVENANCE-CHAT-COMMANDS.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-CHAT-COMMANDS.md) — natural language to enable provenance, deploy with validation, and verify receipts.
 
 ## 👤 Autor/Developer
 
@@ -401,7 +401,7 @@ Attacker changes `target_ref` after signing:
 
 ## Related docs
 
-- [README.md](./README.md) — installation, module reference, tamper detection, P1/P2 sections
+- [README.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/README.md) — installation, module reference, tamper detection, P1/P2 sections
 - [BoundaryAttest Interop Profile v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/1ea9864/docs/interop-profile-v0.1.md)
 - [Dependency-free adapter guide](https://github.com/cullenmeyers/BoundaryAttest/blob/1ea9864/docs/interop-adapter-guide-v0.1.md)
 - [Verification limits v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/1ea9864/docs/interop-verification-limits-v0.1.md)

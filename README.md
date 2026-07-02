@@ -6,7 +6,7 @@ Also: deploy to code engine, ibm ce mcp, ai deploy containers, copilot mcp serve
 
 # IBM Code Engine MCP Server
 
-![Code Engine MCP Server — IBM Cloud rocket and container logo](./images/code_engine_mcp_logo.png)
+![Code Engine MCP Server — IBM Cloud rocket and container logo](https://github.com/markusvankempen/code-engine-mcp-server/raw/main/images/code_engine_mcp_logo.png)
 
 **MCP server for IBM Code Engine — build, push, and deploy containers from Cursor, Copilot, Claude, and Cline using natural language.**
 
@@ -22,10 +22,10 @@ Also: deploy to code engine, ibm ce mcp, ai deploy containers, copilot mcp serve
 ---
 
 [![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/markusvankempen/code-engine-mcp-server)
-[![Release](https://img.shields.io/badge/release-v1.4.2-blue)](./CHANGELOG.md#142---2026-07-02)
+[![Release](https://img.shields.io/badge/release-v1.4.2-blue)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/CHANGELOG.md#142---2026-07-02)
 [![IBM Cloud](https://img.shields.io/badge/IBM%20Cloud-Code%20Engine-1261FE)](https://cloud.ibm.com/codeengine/overview)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=nodedotjs&logoColor=white)](#prerequisites)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/LICENSE)
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp)
 [![Open VSX](https://img.shields.io/badge/Open%20VSX-Registry-C160EF?logo=eclipseide&logoColor=white)](https://open-vsx.org/extension/markusvankempen/code-engine-mcp)
 [![npm](https://img.shields.io/npm/v/code-engine-mcp-server.svg?label=npm)](https://www.npmjs.com/package/code-engine-mcp-server)
@@ -153,7 +153,7 @@ Open the Activity Dashboard while the assistant runs to watch `proc_build_push_d
 
 ## Deploy Your First App
 
-This walks through deploying the included [Star Wars splash page example](./examples/starwars-splash/) — a static nginx container — entirely through the MCP server.
+This walks through deploying the included [Star Wars splash page example](https://github.com/markusvankempen/code-engine-mcp-server/tree/main/examples/starwars-splash) — a static nginx container — entirely through the MCP server.
 
 > **Apple Silicon users:** always build with `--platform linux/amd64`. Code Engine runs amd64 only.
 
@@ -444,7 +444,7 @@ Any STDIO MCP server becomes a remotely accessible, auto-scaling cloud service �
 
 This example deploys [`@tokenizin/mcp-npx-fetch`](https://www.npmjs.com/package/@tokenizin/mcp-npx-fetch), an MCP server that lets an AI assistant fetch content from public URLs.
 
-The example files live in [examples/mcp-server-supergateway/](./examples/mcp-server-supergateway/).
+The example files live in [examples/mcp-server-supergateway/](https://github.com/markusvankempen/code-engine-mcp-server/tree/main/examples/mcp-server-supergateway).
 
 ### Step 1 — Deploy the hosted MCP server
 
@@ -601,7 +601,7 @@ Name it "mcp-fetch-server", wait for it to be ready, and give me the /sse URL
 so I can add it to my mcp.json.
 ```
 
-See [examples/mcp-server-supergateway/](./examples/mcp-server-supergateway/) for the ready-to-use client config file.
+See [examples/mcp-server-supergateway/](https://github.com/markusvankempen/code-engine-mcp-server/tree/main/examples/mcp-server-supergateway) for the ready-to-use client config file.
 
 ### Deploy any other STDIO MCP server
 
@@ -618,16 +618,15 @@ The same pattern works for any `npx`-runnable MCP server — just swap the `--st
 
 ## Documentation
 
-- [Setup Instructions](./docs/SETUP_INSTRUCTIONS.md)
-- [MCP Inspector Troubleshooting](./docs/MCP_INSPECTOR_TROUBLESHOOTING.md)
-- [VS Code MCP extension](./vscode-extension/README.md) — Activity Dashboard, Receipt Visualizer, setup & diagnostics
-- [Code Engine API Reference](./docs/CODE_ENGINE_API_REFERENCE.md)
-- [API Call Scenarios](./docs/API_CALL_SCENARIOS.md)
-- [Client README](./docs/CLIENT_README.md)
-- [Cline MCP Config Example](./docs/CLINE_CONFIG_EXAMPLE.json)
-- [Code of Conduct](./docs/CODE_OF_CONDUCT.md)
-- [Contributing Guide](./docs/CONTRIBUTING.md)
-- [Maintainers](./docs/MAINTAINERS.md)
+- [Setup Instructions](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/SETUP_INSTRUCTIONS.md)
+- [MCP Inspector Troubleshooting](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/MCP_INSPECTOR_TROUBLESHOOTING.md)
+- [VS Code MCP extension](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/vscode-extension/README.md) — Activity Dashboard, Receipt Visualizer, setup & diagnostics
+- [IBM Code Engine API (IBM Cloud)](https://cloud.ibm.com/apidocs/codeengine/v2)
+- [Client README](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/CLIENT_README.md)
+- [Cline MCP Config Example](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/CLINE_CONFIG_EXAMPLE.json)
+- [Code of Conduct](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/CODE_OF_CONDUCT.md)
+- [Contributing Guide](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/CONTRIBUTING.md)
+- [Maintainers](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/MAINTAINERS.md)
 
 ## 🗂️ Project Structure
 
@@ -749,7 +748,7 @@ After step 4 you can open GitHub Copilot Chat and immediately ask:
 
 > **Tip:** If Copilot can't see the tools after installing, run **Command Palette → Reload Window** once.
 
-More detail: [vscode-extension/README.md](./vscode-extension/README.md).
+More detail: [vscode-extension/README.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/vscode-extension/README.md).
 
 ---
 
@@ -1233,17 +1232,17 @@ node build/index.js
 
 ## 📄 License
 
-[Apache License 2.0](./LICENSE) · [opensource.org/licenses/Apache-2.0](https://opensource.org/licenses/Apache-2.0)
+[Apache License 2.0](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/LICENSE) · [opensource.org/licenses/Apache-2.0](https://opensource.org/licenses/Apache-2.0)
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request (see [Contributing Guide](./docs/CONTRIBUTING.md)).
+Contributions are welcome! Please open an issue or submit a pull request (see [Contributing Guide](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/CONTRIBUTING.md)).
 
 ## 🙋 Support
 
 For issues and questions:
-- Check [Setup Instructions](./docs/SETUP_INSTRUCTIONS.md) and [Code Engine API Reference](./docs/CODE_ENGINE_API_REFERENCE.md)
-- Open an issue in this repository with reproduction steps and logs
+- Check [Setup Instructions](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/SETUP_INSTRUCTIONS.md) and [MCP Inspector Troubleshooting](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/MCP_INSPECTOR_TROUBLESHOOTING.md)
+- Open an [issue](https://github.com/markusvankempen/code-engine-mcp-server/issues) with reproduction steps and logs
 
 ---
 
@@ -1271,14 +1270,14 @@ The server creates the events file automatically. Use `MCP_ACTIVITY_SESSION_ID` 
 
 ## Optional addon: Provenance
 
-> **Not part of core MCP functionality.** The Code Engine MCP server deploys, builds, and manages apps without provenance. The [provenance addon](./provenance-addon/) is an experimental optional layer that emits signed receipts for selected tool actions (default: **off**).
+> **Not part of core MCP functionality.** The Code Engine MCP server deploys, builds, and manages apps without provenance. The [provenance addon](https://github.com/markusvankempen/code-engine-mcp-server/tree/main/provenance-addon) is an experimental optional layer that emits signed receipts for selected tool actions (default: **off**).
 
 | Doc | Purpose |
 |-----|---------|
-| [provenance-addon/README.md](./provenance-addon/README.md) | What receipts prove (and do not prove) |
-| [PROVENANCE-CHAT-COMMANDS.md](./provenance-addon/PROVENANCE-CHAT-COMMANDS.md) | Chat prompts when you choose to enable it |
-| [PROVENANCE-E2E-FLOW.md](./provenance-addon/PROVENANCE-E2E-FLOW.md) | Technical E2E flow |
-| [examples/startrek-splash/README.md](./examples/startrek-splash/README.md#documented-example-flow-verified-deploy) | Documented MCP deploy + optional receipts |
+| [provenance-addon/README.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/README.md) | What receipts prove (and do not prove) |
+| [PROVENANCE-CHAT-COMMANDS.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-CHAT-COMMANDS.md) | Chat prompts when you choose to enable it |
+| [PROVENANCE-E2E-FLOW.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-E2E-FLOW.md) | Technical E2E flow |
+| [examples/startrek-splash/README.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/examples/startrek-splash/README.md#documented-example-flow-verified-deploy) | Documented MCP deploy + optional receipts |
 
 Enable in `code-engine-mcp-server/.env` (`PROVENANCE_ENABLED=true`), restart MCP. With provenance on, `proc_build_push_deploy` returns `provenance_receipts` in its JSON response.
 

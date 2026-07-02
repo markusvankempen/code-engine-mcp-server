@@ -33,7 +33,7 @@ This helps when evidence must be checked outside the original runtime.
 
 ## BoundaryAttest Interop (upstream)
 
-**Status:** experimental v0.1 — interop + artifact checks run in [CI](../../.github/workflows/provenance-interop.yml) on changes to `provenance-addon/`.
+**Status:** experimental v0.1 — interop + artifact checks run in [CI](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/.github/workflows/provenance-interop.yml) on changes to `provenance-addon/`.
 
 This addon implements [BoundaryAttest Interop Profile v0.1](https://github.com/cullenmeyers/BoundaryAttest/blob/1ea9864/docs/interop-profile-v0.1.md) locally — **no BoundaryAttest npm dependency**. Two-way interop is verified:
 
@@ -51,9 +51,9 @@ Upstream references pinned to BoundaryAttest docs slice commit [`1ea9864`](https
 
 Code Engine MCP adds **extended claim fields** (`tool_name`, `session_id`, `task_id`, `input_hash`, etc.) inside `claim` per the adapter guide. Verifiers ignore unknown fields after required checks pass.
 
-For a **step-by-step end-to-end walkthrough** with example data, Mermaid diagrams, and a code map (CE vs BoundaryAttest ownership), see **[PROVENANCE-E2E-FLOW.md](./PROVENANCE-E2E-FLOW.md)**.
+For a **step-by-step end-to-end walkthrough** with example data, Mermaid diagrams, and a code map (CE vs BoundaryAttest ownership), see **[PROVENANCE-E2E-FLOW.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-E2E-FLOW.md)**.
 
-For **chat prompts** (optional addon only), see **[PROVENANCE-CHAT-COMMANDS.md](./PROVENANCE-CHAT-COMMANDS.md)**. Core deploy examples without provenance: [startrek-splash](../examples/startrek-splash/README.md), [starwars-splash](../examples/starwars-splash/README.md).
+For **chat prompts** (optional addon only), see **[PROVENANCE-CHAT-COMMANDS.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-CHAT-COMMANDS.md)**. Core deploy examples without provenance: [startrek-splash](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/examples/startrek-splash/README.md), [starwars-splash](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/examples/starwars-splash/README.md).
 
 ## What It Does and Does Not Prove
 
@@ -247,7 +247,7 @@ What it covers:
 
 Node CI equivalent: `npm run interop:ci`. Drill-down receipts: open **Visualizer** from the test lab header.
 
-See also [PROVENANCE-E2E-FLOW.md](./PROVENANCE-E2E-FLOW.md) for step-by-step flow diagrams.
+See also [PROVENANCE-E2E-FLOW.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-E2E-FLOW.md) for step-by-step flow diagrams.
 
 ## Data Flow
 
@@ -258,7 +258,7 @@ See also [PROVENANCE-E2E-FLOW.md](./PROVENANCE-E2E-FLOW.md) for step-by-step flo
 5. The canonical claim JSON is signed (Ed25519).
 6. Receipt is optionally written to disk.
 
-See **[PROVENANCE-E2E-FLOW.md](./PROVENANCE-E2E-FLOW.md)** for the full walkthrough with example JSON at each step, verification paths, and which module runs when.
+See **[PROVENANCE-E2E-FLOW.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-E2E-FLOW.md)** for the full walkthrough with example JSON at each step, verification paths, and which module runs when.
 
 ## Flow Chart (Mermaid)
 
@@ -397,7 +397,7 @@ Use this addon only at post-tool completion boundaries for selected actions.
 
 The MCP server includes `write_or_modify_file` with optional provenance when enabled.
 
-**Chat prompts:** see **[PROVENANCE-CHAT-COMMANDS.md](./PROVENANCE-CHAT-COMMANDS.md)** for what to say in Cursor/Copilot/Claude to enable provenance, label sessions, deploy with validation gates, and verify receipts.
+**Chat prompts:** see **[PROVENANCE-CHAT-COMMANDS.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-CHAT-COMMANDS.md)** for what to say in Cursor/Copilot/Claude to enable provenance, label sessions, deploy with validation gates, and verify receipts.
 
 ```bash
 export PROVENANCE_ENABLED=true

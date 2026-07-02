@@ -222,7 +222,7 @@ The assistant should respond with your Docker or Podman version.
 | Tools show `undefined` | Run Diagnostics (extension sidebar) or check `tools/list` in [MCP Inspector](https://github.com/modelcontextprotocol/inspector) |
 | `Cannot find module` | Use `npx -y code-engine-mcp-server@latest` or build: `npm install && npm run build` |
 | `node` not found | Node.js 18+ required — install from [nodejs.org](https://nodejs.org) |
-| App stuck `no_revision_ready` | `ce_refresh_icr_pull_secret` then re-deploy; see [MCP_INSPECTOR_TROUBLESHOOTING.md](../../../docs/MCP_INSPECTOR_TROUBLESHOOTING.md) |
+| App stuck `no_revision_ready` | `ce_refresh_icr_pull_secret` then re-deploy; see [MCP Inspector Troubleshooting](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/MCP_INSPECTOR_TROUBLESHOOTING.md) |
 | Remote slow first request | Normal — remote scales to zero, wake-up ~5s |
 
 ### Security Checklist
@@ -327,6 +327,16 @@ The assistant should respond with your Docker or Podman version.
 | `proc_build_push_deploy` | **Full pipeline**: build → tag → login → push → deploy app → wait for ready. Use this for end-to-end deployments. |
 | `proc_setup_custom_domain` | Set up a custom domain with TLS on an existing app |
 
+### Activity Dashboard (v1.4.0 — observability, not deploy)
+
+| Surface | Purpose |
+|---------|---------|
+| VS Code command | **IBM Code Engine MCP: Open MCP Activity Dashboard** |
+| Dev repo | `npm run dashboard` → http://localhost:8767/ |
+| Event log | `dashboard/activity/live/events.jsonl` when `MCP_ACTIVITY_ENABLED=true` |
+
+Enable in MCP env before deploy so the user can watch `proc_build_push_deploy` step-by-step. If the dashboard is empty, verify MCP server env (not chat), restart MCP, and check **Show all activity** was not cleared.
+
 ---
 
 ## Standard Deployment Workflow
@@ -377,7 +387,7 @@ proc_setup_custom_domain(project_id, app_name, domain, tls_cert_file, tls_key_fi
 
 Experimental v0.1 signed receipts for selected MCP actions. **Off by default.**
 
-**Chat prompt guide:** [provenance-addon/PROVENANCE-CHAT-COMMANDS.md](../../provenance-addon/PROVENANCE-CHAT-COMMANDS.md)
+**Chat prompt guide:** [provenance-addon/PROVENANCE-CHAT-COMMANDS.md](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/provenance-addon/PROVENANCE-CHAT-COMMANDS.md)
 
 When the user asks for provenance-backed work:
 

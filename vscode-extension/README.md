@@ -88,9 +88,9 @@ If you use the [provenance addon](https://github.com/markusvankempen/code-engine
 
 The panel loads receipts from `provenance-addon/receipts/live/` on open. **Live refresh** is optional (off by default) — toggle it in the panel header or set `codeEngineMcp.provenanceLiveRefresh` in settings. Use **↻ Reload** for a manual refresh.
 
-**You need:** the workspace folder open (e.g. `code-engine` repo root) and at least one signed receipt on disk.
+**You need:** clone [code-engine-mcp-server](https://github.com/markusvankempen/code-engine-mcp-server) (or open it in your workspace) and at least one signed receipt on disk.
 
-**Browser (no extension):** `cd provenance-addon && npm run serve:visualizer` then enable **Live refresh** at `http://localhost:8766/visualizer.html`.
+**Browser (no extension):** from a [provenance-addon](https://github.com/markusvankempen/code-engine-mcp-server/tree/main/provenance-addon) clone, run `npm run serve:visualizer` then enable **Live refresh** at `http://localhost:8766/visualizer.html`.
 
 ### 6. MCP Activity Dashboard (v1.4.0)
 
@@ -124,6 +124,8 @@ The **Quick Start** tab in the sidebar has ready-to-use prompts. Here are a few 
 > *"List all my Code Engine projects and then show me all the running apps in each project."*
 
 ### 🚀 Developer Splash Page — one-shot deploy
+
+Example: [examples/developer-splash](https://github.com/markusvankempen/code-engine-mcp-server/tree/main/examples/developer-splash)
 > *"I have an app in the examples/developer-splash folder. Please build it for linux/amd64, push it to my ICR namespace, and deploy it to my Code Engine project. If I don't have a pull secret, create one using my API key first. Let me know when it's live!"*
 
 Or step by step:
@@ -132,6 +134,8 @@ Or step by step:
 3. *"Deploy the developer-splash image to my Code Engine project. Check if I have a registry pull secret first, and create one if needed."*
 
 ### ⭐ Star Wars Splash Page — one-shot deploy
+
+Example: [examples/starwars-splash](https://github.com/markusvankempen/code-engine-mcp-server/tree/main/examples/starwars-splash)
 > *"I have a Star Wars splash page in examples/starwars-splash. Please build it for linux/amd64, push it to my ICR namespace, and deploy it to my Code Engine project. If I don't have a pull secret, create one using my API key first. Let me know when it's live!"*
 
 ---
@@ -163,13 +167,19 @@ Reload VS Code window (`Cmd+Shift+P` → **Reload Window**) after configuring MC
 1. Confirm `MCP_ACTIVITY_ENABLED=true` is in the MCP server env (extension sidebar → **Configure MCP**, or `.cursor/mcp.json`) — not just in chat.  
 2. Restart the MCP server (Cursor MCP panel → restart `code-engine`).  
 3. Click **Show all activity** if you previously clicked **Clear view**.  
-4. Open the repo folder that contains `code-engine-mcp-server/dashboard/` so the extension can find `events.jsonl`.
+4. Open the [public repo](https://github.com/markusvankempen/code-engine-mcp-server) (or a local clone) so the extension can find `dashboard/activity/live/events.jsonl` if you use a custom events path.
 
 ---
 
 ## Repository
 
-Source and docs: [github.com/markusvankempen/code-engine-mcp-server](https://github.com/markusvankempen/code-engine-mcp-server)
+Public repo: [github.com/markusvankempen/code-engine-mcp-server](https://github.com/markusvankempen/code-engine-mcp-server)
+
+Key docs on GitHub:
+- [Setup Instructions](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/SETUP_INSTRUCTIONS.md)
+- [Main README](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/README.md)
+- [Provenance addon](https://github.com/markusvankempen/code-engine-mcp-server/tree/main/provenance-addon)
+- [Examples](https://github.com/markusvankempen/code-engine-mcp-server/tree/main/examples)
 
 ---
 
