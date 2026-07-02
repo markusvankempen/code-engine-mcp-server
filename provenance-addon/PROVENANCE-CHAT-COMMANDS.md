@@ -49,6 +49,47 @@ Deploy receipt claim: `session:cursor-local`, `app:startrek-splash@c6fd163e-ef8c
 
 ---
 
+## Linking receipts to **this** chat
+
+Receipts do **not** auto-detect which Cursor/VS Code chat created them. You label them with env vars before running MCP tools:
+
+| Receipt field | Env var | Meaning |
+|---------------|---------|---------|
+| `claim.session_id` | `PROVENANCE_SESSION_ID` | Machine id for one AI chat thread |
+| `claim.task_id` | `PROVENANCE_TASK_ID` | Machine id for one user prompt / goal |
+| `claim.chat_label` | `PROVENANCE_CHAT_LABEL` | **Human-readable chat title** (e.g. "Deploy Star Trek splash demo") |
+| `claim.task_label` | `PROVENANCE_TASK_LABEL` | **Human-readable ask** (e.g. "One-shot MCP deploy with receipts") |
+| `claim.human_summary` | _(auto per tool)_ | **One-line step description** (e.g. "Deploy startrek: Build, push & deploy startrek-splash — succeeded") |
+| `claim.lineage_ref` | `PROVENANCE_LINEAGE_REF` | Optional ticket, PR, or epic (`ticket:ENG-417`) |
+| `claim.target_ref` | _(from tool)_ | What was acted on (`app:startrek-splash@…`, file path) |
+| `claim.trace_ref` | _(defaults to session_id)_ | Operational trace grouping |
+
+### Before a deploy — say in chat
+
+> Label this chat for provenance: set `PROVENANCE_CHAT_LABEL="Deploy Star Trek splash demo"`, `PROVENANCE_TASK_LABEL="One-shot MCP deploy with live receipts"`, `PROVENANCE_SESSION_ID=session:startrek-deploy-20260702`, and `PROVENANCE_TASK_ID=task:deploy-startrek` in `.env` and MCP env, then restart MCP before we deploy.
+
+**Example `.env` block:**
+
+```bash
+PROVENANCE_CHAT_LABEL=Deploy Star Trek splash demo
+PROVENANCE_TASK_LABEL=One-shot MCP deploy with live receipts
+PROVENANCE_SESSION_ID=session:startrek-deploy-20260702
+PROVENANCE_TASK_ID=task:deploy-startrek
+```
+
+### In the visualizer
+
+1. **Correlation bar** (below timeline) — shows `session_id`, `task_id`, `lineage_ref`, and `target_ref` for the selected receipt.
+2. **Chat sessions dropdown** — filters when you have multiple distinct `session_id` values.
+3. **Right panel → AI Chat Sessions** — click a session card to filter the timeline.
+4. **Detail panel → Trace Context** — shows “step N of M in this task” within the session.
+
+### Warning: static labels
+
+If every receipt shows `session:cursor-local` and `task:write-files` (from a shared `.env`), **all chats look the same**. Change `PROVENANCE_SESSION_ID` per chat to tell them apart.
+
+---
+
 ## Quick reference
 
 | Goal | Say this in chat |

@@ -46,6 +46,12 @@ import { redact } from './redact.mjs';
  *   In practice often equals session_id, but may be a lower-level RPC trace.
  * @property {string} [git_ref]
  * @property {string} [lineage_ref]
+ * @property {string} [chat_label]
+ *   Human-readable chat / conversation title (e.g. "Deploy Star Trek splash for demo").
+ * @property {string} [task_label]
+ *   Human-readable user ask or goal within the chat (e.g. "One-shot MCP deploy").
+ * @property {string} [human_summary]
+ *   One-line description of this tool step for humans (auto-generated or explicit).
  * @property {unknown} [input]
  * @property {unknown} [output]
  * @property {unknown} [error]
@@ -349,6 +355,9 @@ export function buildSignedReceipt(event, signer, opts = {}) {
   if (event.trace_ref !== undefined) claim.trace_ref = event.trace_ref;
   if (event.git_ref !== undefined) claim.git_ref = event.git_ref;
   if (event.lineage_ref !== undefined) claim.lineage_ref = event.lineage_ref;
+  if (event.chat_label !== undefined) claim.chat_label = event.chat_label;
+  if (event.task_label !== undefined) claim.task_label = event.task_label;
+  if (event.human_summary !== undefined) claim.human_summary = event.human_summary;
   // Reserved for future receipt chaining. Null in v0.1 unless chain is active.
   claim.previous_receipt_hash = previousReceiptHash;
 

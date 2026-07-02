@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 /**
- * Static server for visualizer.html with optional live receipts API.
+ * Static server for provenance visualizer.html with optional live receipts API.
  *
  *   GET /api/receipts/live  → { receipts, publicKey, hint }
  *
  * Usage: node serve-visualizer.mjs [--port 8766]
+ *
+ * For the MCP Activity & Deployments dashboard (no provenance), use:
+ *   node dashboard/serve-dashboard.mjs [--port 8767]
  */
 
 import { createServer } from 'node:http';
@@ -90,6 +93,7 @@ const server = createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Provenance visualizer: http://localhost:${PORT}/visualizer.html`);
-  console.log(`Live API:            http://localhost:${PORT}/api/receipts/live`);
+  console.log(`Live receipts API:     http://localhost:${PORT}/api/receipts/live`);
+  console.log('MCP dashboard (separate): node ../dashboard/serve-dashboard.mjs');
   console.log('Press Ctrl+C to stop');
 });

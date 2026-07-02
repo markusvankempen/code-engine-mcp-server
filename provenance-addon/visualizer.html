@@ -157,7 +157,45 @@
         border: 1px solid rgba(56,189,248,.25);
         border-radius: 999px;
         padding: 2px 8px;
-        margin-left: 6px;
+      }
+      #correlationBar {
+        background: rgba(15,23,42,.95);
+        border-bottom: 1px solid var(--line);
+        padding: 8px 20px;
+        font-size: 10.5px;
+      }
+      .corr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+      .corr-label { color: var(--muted2); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; margin-right: 4px; }
+      .corr-chip {
+        font-family: monospace;
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        border: 1px solid var(--line2);
+        background: rgba(255,255,255,.03);
+      }
+      .corr-chip.session { color: var(--accent); border-color: rgba(56,189,248,.3); }
+      .corr-chip.task { color: var(--purple); border-color: rgba(167,139,250,.3); }
+      .corr-chip.lineage { color: #fbbf24; border-color: rgba(251,191,36,.3); }
+      .corr-chip.target { color: var(--muted2); }
+      .corr-chip.summary { color: var(--text); border-color: rgba(134,239,172,.35); font-weight: 500; max-width: 100%; }
+      .corr-chip.active { background: rgba(56,189,248,.12); }
+      .corr-muted { color: var(--muted); font-size: 10px; }
+      .corr-warn {
+        margin-top: 6px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: rgba(245,158,11,.08);
+        border: 1px solid rgba(245,158,11,.35);
+        color: #fcd34d;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+      .corr-hint {
+        margin-top: 6px;
+        color: var(--muted2);
+        font-size: 10px;
+        line-height: 1.45;
       }
       select.small {
         background: var(--panel);
@@ -487,6 +525,9 @@
       <div id="timelineTrack"></div>
     </div>
 
+    <!-- CHAT ↔ RECEIPT CORRELATION -->
+    <div id="correlationBar" style="display:none" aria-live="polite"></div>
+
     <!-- MAIN GRID -->
     <div class="main">
 
@@ -523,6 +564,10 @@
     let replayTimer = null;
     let replayIdx = -1;
     let isPlaying = false;
+    /** After Clear: only ingest receipts newer than this ISO timestamp. */
+    let viewClearedAt = null;
+    /** After Clear: auto-focus newest chat session on next live load. */
+    let focusNewWorkAfterClear = false;
 
     // ── Helpers ───────────────────────────────────────────────
     const $ = (id) => document.getElementById(id);
@@ -545,8 +590,134 @@
         .filter(({ r }) => !selectedSessionFilter || getSessionKey(r) === selectedSessionFilter);
     }
 
+    function receiptTimestamp(item) {
+      const claim = item?.json?.claim ?? item?.claim;
+      return claim?.timestamp ? String(claim.timestamp) : '';
+    }
+
+    function filterItemsForView(items) {
+      if (!viewClearedAt) return items;
+      return items.filter((item) => {
+        const ts = receiptTimestamp(item);
+        return ts && ts >= viewClearedAt;
+      });
+    }
+
+    function newestSessionKey(list = receipts) {
+      if (!list.length) return '';
+      let best = list[list.length - 1];
+      for (const r of list) {
+        if (String(r.timestamp).localeCompare(String(best.timestamp)) > 0) best = r;
+      }
+      return getSessionKey(best);
+    }
+
+    function focusNewestSessionAndReceipt() {
+      if (!receipts.length) {
+        selectedIdx = -1;
+        selectedSessionFilter = null;
+        $('sessionSelect').value = '';
+        return;
+      }
+      const sessionKey = newestSessionKey();
+      selectedSessionFilter = sessionKey || null;
+      $('sessionSelect').value = selectedSessionFilter || '';
+      const entries = getVisibleEntries();
+      selectedIdx = entries.length ? entries[entries.length - 1].globalIdx : receipts.length - 1;
+      replayIdx = -1;
+      isPlaying = false;
+    }
+
+    function autoFocusAfterIngest({ wasEmpty, fromLive, prevCount, append }) {
+      if (!receipts.length) {
+        selectedIdx = -1;
+        return;
+      }
+      const grew = receipts.length > prevCount;
+      const shouldFocusNewest =
+        focusNewWorkAfterClear ||
+        wasEmpty ||
+        (fromLive && (wasEmpty || focusNewWorkAfterClear || grew));
+
+      if (shouldFocusNewest) {
+        focusNewestSessionAndReceipt();
+        if (focusNewWorkAfterClear && receipts.length > 0) {
+          focusNewWorkAfterClear = false;
+        }
+        return;
+      }
+
+      if (selectedSessionFilter) {
+        const entries = getVisibleEntries();
+        if (entries.length) {
+          selectedIdx = entries[entries.length - 1].globalIdx;
+        } else {
+          focusNewestSessionAndReceipt();
+        }
+        return;
+      }
+
+      if (!append) {
+        selectedIdx = receipts.length - 1;
+      } else if (grew) {
+        selectedIdx = receipts.length - 1;
+      }
+    }
+
     function sessionDisplayName(key) {
       return String(key).replace(/^(session|trace):/, '');
+    }
+
+    const GENERIC_SESSION_IDS = new Set(['session:cursor-local', 'trace:cursor-local']);
+
+    function analyzeCorrelation() {
+      if (!receipts.length) return null;
+      const sessions = getAllSessionIds();
+      const tasks = [...new Set(receipts.map((r) => r.taskId).filter(Boolean))];
+      const targets = [...new Set(receipts.map((r) => r.targetRef).filter(Boolean))];
+      const visible = selectedIdx >= 0 ? receipts[selectedIdx] : null;
+      let warning = null;
+      if (sessions.length === 1 && receipts.length > 1) {
+        const sid = sessions[0];
+        const isGeneric = GENERIC_SESSION_IDS.has(sid) || /^session:mcp-\d+$/i.test(sid);
+        if (isGeneric && (targets.length > 1 || (tasks.length === 1 && tasks[0] === 'task:write-files'))) {
+          warning = `All receipts share generic "${sid}" — they may be from different chats. Set a unique PROVENANCE_SESSION_ID per chat before deploy (e.g. session:startrek-test-20260702).`;
+        }
+      }
+      return { sessions, tasks, targets, visible, warning };
+    }
+
+    function renderCorrelationBar() {
+      const bar = $('correlationBar');
+      const meta = analyzeCorrelation();
+      if (!meta) {
+        bar.style.display = 'none';
+        return;
+      }
+      bar.style.display = 'block';
+      const sel = meta.visible;
+      const filterNote = selectedSessionFilter
+        ? `<span class="corr-chip active" title="Timeline filtered to this session">filter: ${esc(short(sessionDisplayName(selectedSessionFilter), 28))}</span>`
+        : '';
+      let html = `<div class="corr-row">
+        <span class="corr-label">This receipt ↔ chat</span>
+        ${sel?.humanSummary ? `<span class="corr-chip summary" title="human_summary — what this step did">📝 ${esc(short(sel.humanSummary, 72))}</span>` : ''}
+        ${sel ? `
+          ${sel.chatLabel ? `<span class="corr-chip session" title="chat_label — your chat topic / ask">💬 ${esc(short(sel.chatLabel, 34))}</span>` : sel.sessionId ? `<span class="corr-chip session" title="session_id">💬 ${esc(short(sel.sessionId, 34))}</span>` : ''}
+          ${sel.taskLabel ? `<span class="corr-chip task" title="task_label — user goal in this chat">📌 ${esc(short(sel.taskLabel, 28))}</span>` : sel.taskId ? `<span class="corr-chip task" title="task_id">📌 ${esc(short(sel.taskId, 28))}</span>` : ''}
+          ${sel.lineageRef ? `<span class="corr-chip lineage" title="lineage_ref — ticket, PR, or epic">🔗 ${esc(short(sel.lineageRef, 26))}</span>` : ''}
+          <span class="corr-chip target" title="target_ref — resource acted on">🎯 ${esc(short(sel.targetRef, 38))}</span>
+        ` : `<span class="corr-muted">Select a receipt to see which chat/task it belongs to</span>`}
+        ${filterNote}
+      </div>`;
+      if (meta.warning) {
+        html += `<div class="corr-warn">⚠️ ${esc(meta.warning)}</div>`;
+      } else if (meta.sessions.length > 1) {
+        html += `<div class="corr-hint">ℹ️ ${meta.sessions.length} distinct <code>session_id</code> values loaded — use the <strong>chat sessions</strong> dropdown above to filter one conversation.</div>`;
+      } else if (sel?.sessionId) {
+        html += `<div class="corr-hint">ℹ️ Match this chat in Cursor by setting the same <code>PROVENANCE_SESSION_ID</code> in <code>.env</code> / MCP config before you run tools.</div>`;
+      }
+      bar.innerHTML = html;
     }
 
     function updateSessionSelect() {
@@ -588,6 +759,9 @@
         traceRef: claim.trace_ref || claim.traceRef || '',
         gitRef: claim.git_ref || claim.gitRef || '',
         lineageRef: claim.lineage_ref || claim.lineageRef || '',
+        chatLabel: claim.chat_label || claim.chatLabel || '',
+        taskLabel: claim.task_label || claim.taskLabel || '',
+        humanSummary: claim.human_summary || claim.humanSummary || '',
         artifactHash: claim.artifact_hash || null,
         inputHash: claim.input_hash || null,
         outputHash: claim.output_hash || null,
@@ -690,7 +864,9 @@
       $('tlControls').style.display = visible.length ? 'flex' : 'none';
 
       if (!receipts.length) {
-        $('tlCount').textContent = 'No receipts loaded — load JSON files from receipts/ or receipts/ce-deployment-demo/';
+        $('tlCount').textContent = viewClearedAt
+          ? 'Cleared — waiting for new receipts (only activity after clear is shown)'
+          : 'No receipts loaded — load JSON files from receipts/ or receipts/ce-deployment-demo/';
         return;
       }
       if (!visible.length) {
@@ -755,8 +931,10 @@
           : '';
         div.innerHTML = `
           <div class="ri-tool">${esc(short(r.toolName, 32))}<span class="badge ${r.status}">${r.status}</span>${verifyBadge}</div>
+          ${r.humanSummary ? `<div class="ri-meta" style="color:var(--text);font-weight:500">${esc(short(r.humanSummary, 64))}</div>` : ''}
           <div class="ri-meta">${esc(short(r.targetRef, 36))}</div>
-          <div class="ri-meta">${esc(short(r.timestamp, 30))}${r.taskId ? ` · ${esc(r.taskId)}` : ''}</div>
+          <div class="ri-meta">${r.chatLabel ? `💬 ${esc(short(r.chatLabel, 24))}` : r.sessionId ? `💬 ${esc(short(r.sessionId, 22))}` : ''}${r.taskLabel ? `${r.chatLabel || r.sessionId ? ' · ' : ''}📌 ${esc(short(r.taskLabel, 20))}` : r.taskId ? ` · 📌 ${esc(short(r.taskId, 18))}` : ''}</div>
+          <div class="ri-meta">${esc(short(r.timestamp, 30))}</div>
         `;
         div.addEventListener('click', () => { stopReplay(); selectReceipt(globalIdx); });
         list.appendChild(div);
@@ -963,6 +1141,9 @@
 
         <div class="section-hdr">Claim Fields</div>
         <div class="kv">
+          ${r.humanSummary ? `<div class="kv-row"><div class="kv-k">human_summary</div><div class="kv-v" style="color:var(--text);font-weight:500">${esc(r.humanSummary)}</div></div>` : ''}
+          ${r.chatLabel ? `<div class="kv-row"><div class="kv-k">chat_label</div><div class="kv-v" style="color:var(--accent)">${esc(r.chatLabel)}</div></div>` : ''}
+          ${r.taskLabel ? `<div class="kv-row"><div class="kv-k">task_label</div><div class="kv-v" style="color:var(--purple)">${esc(r.taskLabel)}</div></div>` : ''}
           <div class="kv-row"><div class="kv-k">action_type</div><div class="kv-v">${esc(r.actionType)}</div></div>
           <div class="kv-row"><div class="kv-k">status</div><div class="kv-v ${isFail ? 'err-val' : 'ok-val'}">${esc(r.status)}</div></div>
           <div class="kv-row"><div class="kv-k">target_ref</div><div class="kv-v">${esc(r.targetRef)}</div></div>
@@ -1131,11 +1312,16 @@
       renderTimeline();
       renderDetail();
       renderDrill();
+      renderCorrelationBar();
     }
 
     function selectSessionByKey(key) {
       stopReplay();
       selectedSessionFilter = key || null;
+      if (!key) {
+        viewClearedAt = null;
+        focusNewWorkAfterClear = false;
+      }
       $('sessionSelect').value = selectedSessionFilter || '';
       const entries = getVisibleEntries();
       if (entries.length) selectReceipt(entries[0].globalIdx);
@@ -1145,6 +1331,7 @@
         renderTimeline();
         renderDetail();
         renderDrill();
+        renderCorrelationBar();
       }
     }
 
@@ -1172,6 +1359,7 @@
       renderList();
       renderDetail();
       renderDrill();
+      renderCorrelationBar();
     }
 
     function startReplay() {
@@ -1223,29 +1411,37 @@
       }
     }
 
-    async function ingestReceiptObjects(items, { append = false } = {}) {
+    async function ingestReceiptObjects(items, { append = false, fromLive = false } = {}) {
+      const filtered = filterItemsForView(items);
+      const wasEmpty = receipts.length === 0;
+      const prevCount = receipts.length;
       const next = append ? [...receipts] : [];
       const seen = new Set(next.map((r) => r.sourceName));
-      for (const item of items) {
+      for (const item of filtered) {
         const name = item.name || 'receipt.json';
-        if (seen.has(name)) continue;
         const parsed = item.json ?? item;
         if (!parsed || typeof parsed !== 'object' || !parsed.claim) continue;
+        if (seen.has(name)) {
+          const idx = next.findIndex((r) => r.sourceName === name);
+          if (idx >= 0) next[idx] = parseReceipt(parsed, name);
+          continue;
+        }
         next.push(parseReceipt(parsed, name));
         seen.add(name);
       }
       receipts = next.sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)));
-      if (!append) {
+      if (!append && !viewClearedAt && !focusNewWorkAfterClear) {
         selectedSessionFilter = null;
-        selectedIdx = receipts.length > 0 ? 0 : -1;
-        replayIdx = -1;
-        isPlaying = false;
       }
+      replayIdx = -1;
+      isPlaying = false;
       if (loadedPublicKey) await verifyAllReceipts();
+      autoFocusAfterIngest({ wasEmpty, fromLive, prevCount, append });
       renderTimeline();
       renderList();
       renderDetail();
       renderDrill();
+      renderCorrelationBar();
     }
 
     $('fileInput').addEventListener('change', async (e) => {
@@ -1274,11 +1470,15 @@
       receipts = [];
       selectedSessionFilter = null;
       selectedIdx = -1;
+      viewClearedAt = new Date().toISOString();
+      focusNewWorkAfterClear = true;
       $('fileInput').value = '';
+      $('sessionSelect').value = '';
       renderTimeline();
       renderList();
-      $('detailPanel').innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div>Load receipt JSON files to begin.</div><div style="font-size:11px;color:var(--muted)">Try loading all files from <code>receipts/ce-deployment-demo/</code></div></div>`;
+      $('detailPanel').innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div>Cleared — waiting for new receipts.</div><div style="font-size:11px;color:var(--muted)">Live refresh will show only receipts created after this clear. Choose <strong>All chat sessions</strong> in the dropdown to see older receipts again.</div></div>`;
       renderDrill();
+      renderCorrelationBar();
     });
 
     // ── Live refresh (optional) ─────────────────────────────────
@@ -1319,7 +1519,7 @@
         const data = await res.json();
         if (data.publicKey) await loadPublicKeyFromJson(data.publicKey);
         if (data.receipts?.length) {
-          await ingestReceiptObjects(data.receipts);
+          await ingestReceiptObjects(data.receipts, { fromLive: true });
         } else if (!receipts.length) {
           $('tlCount').textContent = data.hint || 'No receipts in receipts/live/';
         }
@@ -1357,6 +1557,7 @@
     renderTimeline();
     renderList();
     renderDrill();
+    renderCorrelationBar();
     updateLiveUi();
     if (!isVscode && liveRefreshEnabled) startLivePoll();
 
@@ -1373,13 +1574,16 @@
       if (msg.command === 'loadReceipts') {
         if (msg.publicKey) await loadPublicKeyFromJson(msg.publicKey);
         if (msg.receipts?.length) {
-          await ingestReceiptObjects(msg.receipts);
-        } else {
+          await ingestReceiptObjects(msg.receipts, { fromLive: true });
+        } else if (!receipts.length && !viewClearedAt) {
           $('tlCount').textContent = msg.hint || 'No receipts in receipts/live/ — deploy with PROVENANCE_ENABLED=true first.';
+        } else if (viewClearedAt && !receipts.length) {
+          $('tlCount').textContent = 'Cleared — waiting for new receipts after ' + short(viewClearedAt, 24);
         }
       }
       if (msg.command === 'appendReceipts' && msg.receipts?.length) {
-        await ingestReceiptObjects(msg.receipts, { append: true });
+        if (msg.publicKey) await loadPublicKeyFromJson(msg.publicKey);
+        await ingestReceiptObjects(msg.receipts, { append: true, fromLive: true });
       }
     });
 
