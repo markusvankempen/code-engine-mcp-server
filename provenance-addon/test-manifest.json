@@ -1,0 +1,100 @@
+{
+  "version": "0.1",
+  "title": "Provenance Addon Test Lab",
+  "description": "Catalog of interop, reverse, artifact, and tamper scenarios. Browser runner uses Web Crypto; Node CLI mirrors CI.",
+  "links": {
+    "visualizer": "visualizer.html",
+    "e2e_flow": "PROVENANCE-E2E-FLOW.md",
+    "readme": "README.md"
+  },
+  "ownership": {
+    "ba-spec": { "label": "BoundaryAttest spec", "color": "#a78bfa", "description": "Interop profile, vectors, failure codes (upstream @ 1ea9864)" },
+    "ce-impl": { "label": "CE implementation", "color": "#38bdf8", "description": "Local .mjs signing/verify, demos, CI, visualizer" },
+    "ce-fixtures": { "label": "CE fixtures", "color": "#22c55e", "description": "Receipts produced by CE; verified by BA CI (reverse interop)" },
+    "ce-policy": { "label": "CE policy layer", "color": "#f59e0b", "description": "Artifact hash binding (P2) — optional after signature verify" }
+  },
+  "suites": [
+    {
+      "id": "ba-interop",
+      "title": "BA interop vectors",
+      "subtitle": "6/6 — CE verifier × BA fixtures",
+      "owner": ["ba-spec", "ce-impl"],
+      "runner": "browser",
+      "npm": "npm run interop:vectors",
+      "fixtureDir": "interop-v0.1/test-vectors",
+      "visualizerHint": null,
+      "cases": [
+        { "name": "valid receipt + public key", "receipt": "valid-receipt.json", "key": "public-key.pem", "expected": "pass" },
+        { "name": "tampered claim", "receipt": "tampered-claim.json", "key": "public-key.pem", "expected": "invalid_signature" },
+        { "name": "wrong public key", "receipt": "valid-receipt.json", "key": "wrong-public-key.pem", "expected": "public_key_id_mismatch" },
+        { "name": "unsupported version", "receipt": "unsupported-version.json", "key": "public-key.pem", "expected": "unsupported_version" },
+        { "name": "unsupported receipt role", "receipt": "unsupported-receipt-role.json", "key": "public-key.pem", "expected": "unsupported_receipt_role" },
+        { "name": "missing required field", "receipt": "missing-required-field.json", "key": "public-key.pem", "expected": "missing_claim_field:status" }
+      ]
+    },
+    {
+      "id": "ce-reverse",
+      "title": "CE reverse interop",
+      "subtitle": "4/4 — CE receipts × committed public key",
+      "owner": ["ce-fixtures", "ce-impl"],
+      "runner": "browser",
+      "npm": "npm run interop:ce-reverse",
+      "fixtureDir": "interop-v0.1/ce-reverse-fixtures",
+      "receiptDir": "receipts/persisted-key-demo",
+      "visualizerHint": "receipts/persisted-key-demo/",
+      "cases": [
+        { "name": "01 write file executed", "receipt": "01-write_or_modify_file-executed.json", "expected": "pass" },
+        { "name": "02 write file executed", "receipt": "02-write_or_modify_file-executed.json", "expected": "pass" },
+        { "name": "03 update executed", "receipt": "03-update-executed.json", "expected": "pass" },
+        { "name": "04 update failed (valid sig)", "receipt": "04-update-failed.json", "expected": "pass" }
+      ]
+    },
+    {
+      "id": "artifact-demo",
+      "title": "Artifact hash (P2)",
+      "subtitle": "Signature + Dockerfile bytes binding",
+      "owner": ["ce-policy", "ce-impl"],
+      "runner": "browser",
+      "npm": "npm run interop:ci",
+      "fixtureDir": "receipts/artifact-demo",
+      "visualizerHint": null,
+      "cases": [
+        { "name": "write-dockerfile receipt + Dockerfile", "receipt": "write-dockerfile.json", "key": "public.pem", "artifact": "Dockerfile", "expected": "pass" },
+        { "name": "tampered Dockerfile (negative)", "receipt": "write-dockerfile.json", "key": "public.pem", "artifact": "Dockerfile.tampered", "expected": "artifact_hash_mismatch", "artifactOnly": true }
+      ]
+    },
+    {
+      "id": "tamper-demo",
+      "title": "Tamper detection demo",
+      "subtitle": "Valid vs post-signing alterations",
+      "owner": ["ce-impl"],
+      "runner": "browser",
+      "npm": "npm run demo:tamper",
+      "fixtureDir": "receipts/tamper-demo",
+      "visualizerHint": "receipts/tamper-demo/ (include _public_key.json)",
+      "keyFile": "_public_key.json",
+      "cases": [
+        { "name": "01 valid validate dockerfile", "receipt": "01-valid-validate-dockerfile.json", "expected": "pass" },
+        { "name": "02 valid build image", "receipt": "02-valid-build-image.json", "expected": "pass" },
+        { "name": "03 valid deploy app", "receipt": "03-valid-deploy-app.json", "expected": "pass" },
+        { "name": "04 valid push FAILED", "receipt": "04-valid-push-FAILED.json", "expected": "pass" },
+        { "name": "05 TAMPERED target ref", "receipt": "05-TAMPERED-target-ref-changed.json", "expected": "invalid_signature" },
+        { "name": "06 TAMPERED status flipped", "receipt": "06-TAMPERED-status-flipped.json", "expected": "invalid_signature" },
+        { "name": "07 TAMPERED timestamp", "receipt": "07-TAMPERED-timestamp-backdated.json", "expected": "invalid_signature" },
+        { "name": "08 valid write file", "receipt": "08-valid-write-file.json", "expected": "pass" },
+        { "name": "09 TAMPERED artifact_hash removed", "receipt": "09-TAMPERED-artifact-hash-removed.json", "expected": "invalid_signature" },
+        { "name": "10 TAMPERED forged signature", "receipt": "10-TAMPERED-forged-signature.json", "expected": "invalid_signature" },
+        { "name": "11 TAMPERED tool name", "receipt": "11-TAMPERED-tool-name-changed.json", "expected": "invalid_signature" }
+      ]
+    }
+  ],
+  "demos": [
+    { "id": "example", "title": "End-to-end example", "command": "node example.mjs", "npm": "npm run example", "owner": "ce-impl", "receipts": "receipts/", "visualizer": true },
+    { "id": "ce-deployment", "title": "CE deployment flow", "command": "node demo-ce-deployment.mjs", "npm": "npm run demo:ce-deployment", "owner": "ce-impl", "receipts": "receipts/ce-deployment-demo/", "visualizer": true },
+    { "id": "multi-session", "title": "Multi-session chat flow", "command": "node demo-multi-session.mjs", "npm": "npm run demo:multi-session", "owner": "ce-impl", "receipts": "receipts/multi-session-demo/", "visualizer": true },
+    { "id": "persisted-key", "title": "P1 persisted key", "command": "node demo-persisted-key.mjs", "npm": "npm run demo:persisted-key", "owner": "ce-impl", "receipts": "receipts/persisted-key-demo/", "visualizer": true },
+    { "id": "artifact-hash", "title": "P2 artifact hash", "command": "node demo-artifact-hash.mjs", "npm": "npm run demo:artifact-hash", "owner": "ce-policy", "receipts": "receipts/artifact-demo/", "visualizer": false },
+    { "id": "tamper", "title": "Tamper scenarios", "command": "node demo-tamper-scenarios.mjs", "npm": "npm run demo:tamper", "owner": "ce-impl", "receipts": "receipts/tamper-demo/", "visualizer": true },
+    { "id": "interop-ci", "title": "Full interop CI gate", "command": "npm run interop:ci", "npm": "npm run interop:ci", "owner": ["ba-spec", "ce-impl", "ce-policy"], "receipts": null, "visualizer": false }
+  ]
+}

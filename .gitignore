@@ -22,6 +22,7 @@ examples/deploy-mcp-server-to-code-engine/*
 # (no exclusion needed — whole folder is public)
 provenance-addon/.keys/
 provenance-addon/receipts/artifact-demo/.keys/
+provenance-addon/receipts/live/
 
 # TypeScript / build config
 tsconfig.json

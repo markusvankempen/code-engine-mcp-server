@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="author" content="Markus van Kempen" />
+    <meta name="description" content="Provenance addon test lab — interop matrix, browser verification, demo catalog." />
+    <title>Provenance Test Lab</title>
+    <!--
+      Provenance Test Lab v0.1
+
+      ## 👤 Autor/Developer
+      Markus van Kempen
+      Email: markus.van.kempen@gmail.com | mvankempen@ca.ibm.com
+      Website: https://markusvankempen.github.io/
+      No bug too small, no syntax too weird.
+    -->
+    <style>
+      :root {
+        --bg-1: #0f172a;
+        --panel: #0b1220;
+        --panel-soft: #111b2f;
+        --text: #e2e8f0;
+        --muted: #64748b;
+        --muted2: #94a3b8;
+        --ok: #22c55e;
+        --ok-dim: #14532d;
+        --warn: #f59e0b;
+        --err: #ef4444;
+        --line: #1e3a5f;
+        --line2: #334155;
+        --accent: #38bdf8;
+        --purple: #a78bfa;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+        font-size: 13px;
+        color: var(--text);
+        background: linear-gradient(135deg, #0a1628 0%, #0f172a 50%, #0a1f3a 100%);
+        min-height: 100vh;
+      }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      code {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        background: rgba(15, 32, 64, 0.8);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: rgba(11, 18, 32, 0.95);
+        border-bottom: 1px solid var(--line);
+        padding: 12px 20px;
+        backdrop-filter: blur(8px);
+      }
+      .header-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .header-brand { flex: 1; min-width: 240px; }
+      .header h1 {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 0.95rem;
+        color: var(--accent);
+      }
+      .header h1 span { color: var(--muted2); font-weight: 400; }
+      .header-sub { font-size: 11px; color: var(--muted2); margin-top: 4px; line-height: 1.5; }
+      .header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .btn {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--line2);
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .btn:hover { border-color: var(--accent); background: #0f2040; }
+      .btn.primary { border-color: var(--accent); color: var(--accent); }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .layout { max-width: 1200px; margin: 0 auto; padding: 16px 20px 40px; }
+      .banner {
+        background: rgba(245, 158, 11, 0.08);
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 16px;
+        font-size: 12px;
+        line-height: 1.55;
+        display: none;
+      }
+      .banner.show { display: block; }
+      .banner.ok {
+        background: rgba(34, 197, 94, 0.08);
+        border-color: rgba(34, 197, 94, 0.35);
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .stat {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+      }
+      .stat-k { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+      .stat-v { font-size: 1.4rem; font-weight: 600; margin-top: 4px; font-family: "IBM Plex Mono", monospace; }
+      .stat-v.ok { color: var(--ok); }
+      .stat-v.err { color: var(--err); }
+      .stat-v.pending { color: var(--muted2); }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        border: 1px solid var(--line2);
+        background: var(--panel-soft);
+      }
+      .badge-dot { width: 8px; height: 8px; border-radius: 50%; }
+      .section-hdr {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted2);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin: 20px 0 10px;
+      }
+      .suite {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        margin-bottom: 10px;
+        overflow: hidden;
+      }
+      .suite-hdr {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .suite-hdr:hover { background: rgba(56, 189, 248, 0.04); }
+      .suite-title { flex: 1; min-width: 0; }
+      .suite-title h3 { font-size: 13px; font-weight: 600; }
+      .suite-title p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+      .suite-meta { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+      .status-pill {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-family: "IBM Plex Mono", monospace;
+      }
+      .status-pill.pass { background: var(--ok-dim); color: #86efac; }
+      .status-pill.fail { background: #450a0a; color: #fca5a5; }
+      .status-pill.pending { background: #1e293b; color: var(--muted2); }
+      .status-pill.running { background: #1e3a5f; color: var(--accent); }
+      .suite-body { border-top: 1px solid var(--line); display: none; }
+      .suite.open .suite-body { display: block; }
+      .case-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+      .case-table th, .case-table td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+      }
+      .case-table th { color: var(--muted); font-weight: 500; background: rgba(0,0,0,0.15); }
+      .case-table tr:last-child td { border-bottom: none; }
+      .case-pass { color: #86efac; }
+      .case-fail { color: #fca5a5; }
+      .case-pending { color: var(--muted); }
+      .suite-foot {
+        padding: 8px 12px;
+        font-size: 10px;
+        color: var(--muted);
+        background: rgba(0,0,0,0.12);
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .demo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 10px;
+      }
+      .demo-card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+      }
+      .demo-card h4 { font-size: 12px; margin-bottom: 6px; }
+      .demo-card p { font-size: 11px; color: var(--muted); line-height: 1.45; margin-bottom: 8px; }
+      .demo-links { display: flex; gap: 8px; flex-wrap: wrap; font-size: 10px; }
+      .owner-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+      .owner-tag {
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div class="header-main">
+        <div class="header-brand">
+          <h1>Provenance <span>Test Lab</span></h1>
+          <div class="header-sub">
+            Interop matrix · browser verify · demo catalog ·
+            <a href="PROVENANCE-E2E-FLOW.md">E2E flow doc</a>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="btn primary" id="runAllBtn">▶ Run all browser tests</button>
+          <a class="btn" href="visualizer.html">📊 Visualizer</a>
+          <a class="btn" href="README.md">📖 README</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <div id="serveBanner" class="banner">
+        Browser tests load fixtures via <code>fetch()</code>. Start a local server from
+        <code>provenance-addon/</code>:
+        <code>npm run test:lab</code> then open
+        <a id="serveLink" href="#">http://localhost:8765/test-lab.html</a>
+      </div>
+      <div id="resultBanner" class="banner"></div>
+
+      <div class="stats">
+        <div class="stat"><div class="stat-k">Suites</div><div class="stat-v pending" id="statSuites">—</div></div>
+        <div class="stat"><div class="stat-k">Cases passed</div><div class="stat-v pending" id="statPass">—</div></div>
+        <div class="stat"><div class="stat-k">Cases failed</div><div class="stat-v pending" id="statFail">—</div></div>
+        <div class="stat"><div class="stat-k">Last run</div><div class="stat-v pending" id="statTime" style="font-size:0.85rem">—</div></div>
+      </div>
+
+      <div class="legend" id="legend"></div>
+
+      <div class="section-hdr">Browser test suites</div>
+      <div id="suites"></div>
+
+      <div class="section-hdr">Node demos (generate receipts → open visualizer)</div>
+      <div class="demo-grid" id="demos"></div>
+    </main>
+
+    <script id="manifest-fallback" type="application/json">
+    </script>
+
+    <script>
+    // ── Interop verify (browser port of receipt.mjs profile v0.1) ──
+    const INTEROP_REQUIRED_TOP = ['claim', 'signature', 'public_key_id'];
+    const INTEROP_REQUIRED_CLAIM = ['receipt_version', 'receipt_role', 'event_id', 'timestamp', 'action_type', 'status'];
+
+    function fail(reason) { return { ok: false, reason }; }
+    function isRecord(v) { return typeof v === 'object' && v !== null && !Array.isArray(v); }
+    function hasOwn(obj, field) { return Object.prototype.hasOwnProperty.call(obj, field); }
+
+    function canonicalize(value) {
+      if (Array.isArray(value)) return value.map(v => canonicalize(v));
+      if (value && typeof value === 'object') {
+        const out = {};
+        for (const key of Object.keys(value).sort()) {
+          if (value[key] === undefined) continue;
+          out[key] = canonicalize(value[key]);
+        }
+        return out;
+      }
+      return value;
+    }
+    function canonicalJson(value) { return JSON.stringify(canonicalize(value)); }
+
+    function pemToDer(pem) {
+      const b64 = pem.replace(/-----BEGIN [^-]+-----/g, '').replace(/-----END [^-]+-----/g, '').replace(/\s/g, '');
+      return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    }
+
+    async function hashRawBytes(bytes) {
+      const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      const hash = await crypto.subtle.digest('SHA-256', buf);
+      return 'sha256:' + [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function interopPublicKeyIdFromPem(pem) {
+      return hashRawBytes(pemToDer(pem));
+    }
+
+    async function importEd25519PublicKeyFromPem(pem) {
+      const der = pemToDer(pem);
+      return crypto.subtle.importKey('spki', der, { name: 'Ed25519' }, false, ['verify']);
+    }
+
+    async function importEd25519FromSpkiBase64(b64) {
+      const der = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      return crypto.subtle.importKey('spki', der, { name: 'Ed25519' }, false, ['verify']);
+    }
+
+    function verifyInteropStructure(receipt) {
+      if (!isRecord(receipt)) return fail('invalid_receipt');
+      for (const field of INTEROP_REQUIRED_TOP) {
+        if (!hasOwn(receipt, field)) return fail(`missing_top_level_field:${field}`);
+      }
+      for (const field of Object.keys(receipt)) {
+        if (!INTEROP_REQUIRED_TOP.includes(field)) return fail(`unexpected_top_level_field:${field}`);
+      }
+      if (!isRecord(receipt.claim)) return fail('claim_not_object');
+      if (typeof receipt.signature !== 'string' || typeof receipt.public_key_id !== 'string') {
+        return fail('invalid_receipt');
+      }
+      for (const field of INTEROP_REQUIRED_CLAIM) {
+        if (!hasOwn(receipt.claim, field)) return fail(`missing_claim_field:${field}`);
+      }
+      if (receipt.claim.receipt_version !== '0.1') return fail('unsupported_version');
+      const role = receipt.claim.receipt_role;
+      if (role !== 'client_observed' && role !== 'server_attested') return fail('unsupported_receipt_role');
+      return null;
+    }
+
+    async function verifyInteropReceipt(receipt, publicKeyPem) {
+      const structural = verifyInteropStructure(receipt);
+      if (structural) return structural;
+      const keyId = await interopPublicKeyIdFromPem(publicKeyPem);
+      if (receipt.public_key_id !== keyId) return fail('public_key_id_mismatch');
+      try {
+        const key = await importEd25519PublicKeyFromPem(publicKeyPem);
+        const data = new TextEncoder().encode(canonicalJson(receipt.claim));
+        const sig = Uint8Array.from(atob(receipt.signature), c => c.charCodeAt(0));
+        const ok = await crypto.subtle.verify('Ed25519', key, sig, data);
+        return ok ? { ok: true } : fail('invalid_signature');
+      } catch {
+        return fail('invalid_signature');
+      }
+    }
+
+    async function verifyInteropReceiptWithKey(receipt, cryptoKey, expectedKeyId) {
+      const structural = verifyInteropStructure(receipt);
+      if (structural) return structural;
+      if (expectedKeyId && receipt.public_key_id !== expectedKeyId) return fail('public_key_id_mismatch');
+      try {
+        const data = new TextEncoder().encode(canonicalJson(receipt.claim));
+        const sig = Uint8Array.from(atob(receipt.signature), c => c.charCodeAt(0));
+        const ok = await crypto.subtle.verify('Ed25519', cryptoKey, sig, data);
+        return ok ? { ok: true } : fail('invalid_signature');
+      } catch {
+        return fail('invalid_signature');
+      }
+    }
+
+    async function verifyArtifactHash(receipt, artifactBytes) {
+      const claim = receipt?.claim;
+      if (!claim || typeof claim !== 'object') return fail('invalid_receipt');
+      const expected = claim.artifact_hash;
+      if (typeof expected !== 'string' || !expected.startsWith('sha256:')) return fail('artifact_hash_missing');
+      const actual = await hashRawBytes(artifactBytes);
+      return actual === expected ? { ok: true } : fail('artifact_hash_mismatch');
+    }
+
+    // ── UI state ───────────────────────────────────────────────────
+    let manifest = null;
+    const caseResults = new Map(); // `${suiteId}:${index}` -> { pass, actual, expected }
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    function canFetchFixtures() {
+      return location.protocol === 'http:' || location.protocol === 'https:';
+    }
+
+    async function loadManifest() {
+      if (canFetchFixtures()) {
+        try {
+          const res = await fetch('test-manifest.json');
+          if (res.ok) return res.json();
+        } catch { /* fallback */ }
+      }
+      const el = $('manifest-fallback');
+      if (el.textContent.trim()) return JSON.parse(el.textContent);
+      throw new Error('Could not load test-manifest.json — use npm run test:lab');
+    }
+
+    async function fetchText(path) {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+      return res.text();
+    }
+
+    async function fetchJson(path) {
+      return JSON.parse(await fetchText(path));
+    }
+
+    function ownerBadge(id) {
+      const o = manifest.ownership[id];
+      if (!o) return '';
+      return `<span class="owner-tag" style="border-color:${o.color};color:${o.color}">${esc(o.label)}</span>`;
+    }
+
+    function renderLegend() {
+      $('legend').innerHTML = Object.entries(manifest.ownership).map(([id, o]) =>
+        `<span class="badge" title="${esc(o.description)}"><span class="badge-dot" style="background:${o.color}"></span>${esc(o.label)}</span>`
+      ).join('');
+    }
+
+    function suiteStatus(suiteId, suite) {
+      let pass = 0, fail = 0, done = 0;
+      suite.cases.forEach((_, i) => {
+        const r = caseResults.get(`${suiteId}:${i}`);
+        if (!r) return;
+        done++;
+        if (r.pass) pass++; else fail++;
+      });
+      if (done === 0) return { label: 'pending', cls: 'pending', text: `${suite.cases.length} cases` };
+      if (fail > 0) return { label: 'fail', cls: 'fail', text: `${pass}/${suite.cases.length} pass` };
+      if (pass === suite.cases.length) return { label: 'pass', cls: 'pass', text: `${pass}/${suite.cases.length} pass` };
+      return { label: 'running', cls: 'running', text: `${pass}/${done}…` };
+    }
+
+    function renderSuites() {
+      $('suites').innerHTML = manifest.suites.map(suite => {
+        const owners = (Array.isArray(suite.owner) ? suite.owner : [suite.owner]).map(ownerBadge).join('');
+        const st = suiteStatus(suite.id, suite);
+        const rows = suite.cases.map((c, i) => {
+          const r = caseResults.get(`${suite.id}:${i}`);
+          const cls = !r ? 'case-pending' : r.pass ? 'case-pass' : 'case-fail';
+          const icon = !r ? '○' : r.pass ? '✓' : '✗';
+          const detail = r ? `${r.actual}${r.pass ? '' : ` (expected ${r.expected})`}` : '—';
+          return `<tr><td class="${cls}">${icon}</td><td>${esc(c.name)}</td><td><code>${esc(c.expected)}</code></td><td>${esc(detail)}</td></tr>`;
+        }).join('');
+        const viz = suite.visualizerHint
+          ? `<span>Visualizer: load <code>${esc(suite.visualizerHint)}</code></span>` : '';
+        return `
+          <div class="suite" data-suite="${esc(suite.id)}">
+            <div class="suite-hdr" onclick="toggleSuite('${esc(suite.id)}')">
+              <div class="suite-title">
+                <h3>${esc(suite.title)}</h3>
+                <p>${esc(suite.subtitle)} · <code>${esc(suite.npm)}</code></p>
+                <div class="owner-tags">${owners}</div>
+              </div>
+              <div class="suite-meta">
+                <span class="status-pill ${st.cls}" id="pill-${esc(suite.id)}">${esc(st.text)}</span>
+              </div>
+            </div>
+            <div class="suite-body">
+              <table class="case-table">
+                <thead><tr><th></th><th>Case</th><th>Expected</th><th>Actual</th></tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+              <div class="suite-foot">
+                <span>Fixtures: <code>${esc(suite.fixtureDir)}</code></span>
+                ${viz}
+                <span>Node: <code>${esc(suite.npm)}</code></span>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function renderDemos() {
+      $('demos').innerHTML = manifest.demos.map(d => {
+        const owners = (Array.isArray(d.owner) ? d.owner : [d.owner]).map(ownerBadge).join('');
+        const viz = d.visualizer && d.receipts
+          ? `<a href="visualizer.html">Open visualizer</a> · load <code>${esc(d.receipts)}</code>`
+          : d.receipts ? `<code>${esc(d.receipts)}</code>` : 'CI gate only';
+        return `
+          <div class="demo-card">
+            <h4>${esc(d.title)}</h4>
+            <p><code>${esc(d.command)}</code></p>
+            <div class="owner-tags">${owners}</div>
+            <div class="demo-links" style="margin-top:8px">${viz}</div>
+          </div>`;
+      }).join('');
+    }
+
+    function updateStats() {
+      const suites = manifest.suites.length;
+      let pass = 0, fail = 0;
+      for (const [, r] of caseResults) {
+        if (r.pass) pass++; else fail++;
+      }
+      $('statSuites').textContent = suites;
+      $('statSuites').className = 'stat-v pending';
+      $('statPass').textContent = caseResults.size ? pass : '—';
+      $('statPass').className = 'stat-v ' + (caseResults.size && fail === 0 ? 'ok' : caseResults.size ? 'ok' : 'pending');
+      $('statFail').textContent = caseResults.size ? fail : '—';
+      $('statFail').className = 'stat-v ' + (fail > 0 ? 'err' : 'pending');
+    }
+
+    window.toggleSuite = function(id) {
+      document.querySelector(`.suite[data-suite="${id}"]`)?.classList.toggle('open');
+    };
+
+    async function runBaInteropSuite(suite) {
+      const dir = suite.fixtureDir;
+      for (let i = 0; i < suite.cases.length; i++) {
+        const c = suite.cases[i];
+        const receipt = await fetchJson(`${dir}/${c.receipt}`);
+        const keyPem = await fetchText(`${dir}/${c.key}`);
+        const result = await verifyInteropReceipt(receipt, keyPem);
+        const actual = result.ok ? 'pass' : result.reason;
+        caseResults.set(`${suite.id}:${i}`, { pass: actual === c.expected, actual, expected: c.expected });
+        renderSuites();
+        updateStats();
+      }
+    }
+
+    async function runCeReverseSuite(suite) {
+      const keyPem = await fetchText(`${suite.fixtureDir}/public.pem`);
+      const receiptDir = suite.receiptDir;
+      for (let i = 0; i < suite.cases.length; i++) {
+        const c = suite.cases[i];
+        const receipt = await fetchJson(`${receiptDir}/${c.receipt}`);
+        const result = await verifyInteropReceipt(receipt, keyPem);
+        const actual = result.ok ? 'pass' : result.reason;
+        caseResults.set(`${suite.id}:${i}`, { pass: actual === c.expected, actual, expected: c.expected });
+        renderSuites();
+        updateStats();
+      }
+    }
+
+    async function runArtifactSuite(suite) {
+      const dir = suite.fixtureDir;
+      for (let i = 0; i < suite.cases.length; i++) {
+        const c = suite.cases[i];
+        const receipt = await fetchJson(`${dir}/${c.receipt}`);
+        let actual;
+        if (c.artifactOnly) {
+          const bytes = await fetch(`${dir}/${c.artifact}`).then(r => r.arrayBuffer());
+          const art = await verifyArtifactHash(receipt, new Uint8Array(bytes));
+          actual = art.ok ? 'pass' : art.reason;
+        } else {
+          const keyPem = await fetchText(`${dir}/${c.key}`);
+          const sig = await verifyInteropReceipt(receipt, keyPem);
+          if (!sig.ok) {
+            actual = sig.reason;
+          } else {
+            const bytes = await fetch(`${dir}/${c.artifact}`).then(r => r.arrayBuffer());
+            const art = await verifyArtifactHash(receipt, new Uint8Array(bytes));
+            actual = art.ok ? 'pass' : art.reason;
+          }
+        }
+        caseResults.set(`${suite.id}:${i}`, { pass: actual === c.expected, actual, expected: c.expected });
+        renderSuites();
+        updateStats();
+      }
+    }
+
+    async function runTamperSuite(suite) {
+      const dir = suite.fixtureDir;
+      const keyData = await fetchJson(`${dir}/${suite.keyFile}`);
+      const cryptoKey = await importEd25519FromSpkiBase64(keyData.public_key_spki_base64);
+      const keyId = keyData.public_key_id;
+      for (let i = 0; i < suite.cases.length; i++) {
+        const c = suite.cases[i];
+        const receipt = await fetchJson(`${dir}/${c.receipt}`);
+        const result = await verifyInteropReceiptWithKey(receipt, cryptoKey, keyId);
+        const actual = result.ok ? 'pass' : result.reason;
+        caseResults.set(`${suite.id}:${i}`, { pass: actual === c.expected, actual, expected: c.expected });
+        renderSuites();
+        updateStats();
+      }
+    }
+
+    const SUITE_RUNNERS = {
+      'ba-interop': runBaInteropSuite,
+      'ce-reverse': runCeReverseSuite,
+      'artifact-demo': runArtifactSuite,
+      'tamper-demo': runTamperSuite,
+    };
+
+    async function runAllTests() {
+      if (!canFetchFixtures()) {
+        $('resultBanner').className = 'banner show';
+        $('resultBanner').textContent = 'Cannot run browser tests from file:// — start a local server with npm run test:lab';
+        return;
+      }
+      $('runAllBtn').disabled = true;
+      caseResults.clear();
+      renderSuites();
+      updateStats();
+      $('resultBanner').className = 'banner show';
+      $('resultBanner').textContent = 'Running browser tests…';
+
+      let totalFail = 0;
+      try {
+        for (const suite of manifest.suites) {
+          document.querySelector(`.suite[data-suite="${suite.id}"]`)?.classList.add('open');
+          const runner = SUITE_RUNNERS[suite.id];
+          if (!runner) throw new Error(`No runner for ${suite.id}`);
+          await runner(suite);
+          const st = suiteStatus(suite.id, suite);
+          if (st.cls === 'fail') totalFail++;
+        }
+        const total = [...caseResults.values()];
+        const pass = total.filter(r => r.pass).length;
+        const fail = total.length - pass;
+        $('statTime').textContent = new Date().toLocaleTimeString();
+        $('resultBanner').className = 'banner show ' + (fail === 0 ? 'ok' : '');
+        $('resultBanner').textContent = fail === 0
+          ? `All browser tests passed (${pass}/${total.length}). Node CI: npm run interop:ci`
+          : `${fail} case(s) failed (${pass}/${total.length} pass). Check suite details or run npm run interop:ci`;
+      } catch (err) {
+        $('resultBanner').className = 'banner show';
+        $('resultBanner').textContent = `Test run error: ${err.message}`;
+        totalFail = 1;
+      } finally {
+        $('runAllBtn').disabled = false;
+      }
+    }
+
+    async function init() {
+      if (!canFetchFixtures()) {
+        $('serveBanner').classList.add('show');
+        const port = '8765';
+        $('serveLink').href = `http://localhost:${port}/test-lab.html`;
+      } else {
+        $('serveBanner').classList.add('show', 'ok');
+        $('serveBanner').innerHTML = 'Local server detected — click <strong>Run all browser tests</strong> to verify interop, reverse, artifact, and tamper suites in the browser.';
+      }
+
+      try {
+        manifest = await loadManifest();
+      } catch (e) {
+        $('resultBanner').className = 'banner show';
+        $('resultBanner').textContent = e.message;
+        return;
+      }
+
+      renderLegend();
+      renderSuites();
+      renderDemos();
+      updateStats();
+      manifest.suites.forEach(s => document.querySelector(`.suite[data-suite="${s.id}"]`)?.classList.add('open'));
+
+      $('runAllBtn').addEventListener('click', runAllTests);
+    }
+
+    init();
+    </script>
+  </body>
+</html>

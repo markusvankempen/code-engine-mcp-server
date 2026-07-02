@@ -51,6 +51,8 @@ Upstream references pinned to BoundaryAttest docs slice commit [`1ea9864`](https
 
 Code Engine MCP adds **extended claim fields** (`tool_name`, `session_id`, `task_id`, `input_hash`, etc.) inside `claim` per the adapter guide. Verifiers ignore unknown fields after required checks pass.
 
+For a **step-by-step end-to-end walkthrough** with example data, Mermaid diagrams, and a code map (CE vs BoundaryAttest ownership), see **[PROVENANCE-E2E-FLOW.md](./PROVENANCE-E2E-FLOW.md)**.
+
 ## What It Does and Does Not Prove
 
 What it proves:
@@ -91,6 +93,10 @@ What it does not prove:
 | `run-all.sh` | Script | Runs all examples and demo generators |
 | `.keys/` | Generated | Persisted Ed25519 key pair (private.pem + public.pem) |
 | `package.json` | Config | ESM metadata and npm scripts (no external dependencies) |
+| `PROVENANCE-E2E-FLOW.md` | Docs | End-to-end flow diagrams, example data, code map (CE vs BA) |
+| `test-lab.html` | Tool | Browser test dashboard — interop matrix, pass/fail, demo catalog |
+| `test-manifest.json` | Config | Test suite catalog for test-lab.html |
+| `run-test-lab.sh` | Script | Local HTTP server for test-lab browser runner |
 | `visualizer.html` | Tool | Standalone browser receipt visualizer |
 | `receipts/` | Output | Demo receipt JSON output directory |
 | `reference-js/` | Docs | Reference-only `.js` copies for comparison |
@@ -217,6 +223,29 @@ After running a demo generator:
    - `receipts/ce-deployment-demo/` — deployment flow
    - `receipts/multi-session-demo/` — session/task chat flow
 
+### Run the test lab (browser matrix)
+
+The **test lab** runs interop, reverse, artifact, and tamper checks in the browser (Web Crypto Ed25519 + SHA-256):
+
+```bash
+cd provenance-addon
+npm run test:lab
+# Open http://localhost:8765/test-lab.html → click "Run all browser tests"
+```
+
+What it covers:
+
+| Suite | Cases | Owner |
+|---|---|---|
+| BA interop vectors | 6/6 | BA spec + CE verifier |
+| CE reverse fixtures | 4/4 | CE receipts (BA CI verifies upstream) |
+| Artifact hash (P2) | 2 | CE policy layer |
+| Tamper demo | 11 | CE implementation |
+
+Node CI equivalent: `npm run interop:ci`. Drill-down receipts: open **Visualizer** from the test lab header.
+
+See also [PROVENANCE-E2E-FLOW.md](./PROVENANCE-E2E-FLOW.md) for step-by-step flow diagrams.
+
 ## Data Flow
 
 1. A completed tool event is created.
@@ -225,6 +254,8 @@ After running a demo generator:
 4. A claim object is assembled in snake_case wire format.
 5. The canonical claim JSON is signed (Ed25519).
 6. Receipt is optionally written to disk.
+
+See **[PROVENANCE-E2E-FLOW.md](./PROVENANCE-E2E-FLOW.md)** for the full walkthrough with example JSON at each step, verification paths, and which module runs when.
 
 ## Flow Chart (Mermaid)
 
@@ -358,6 +389,35 @@ console.log(result.receiptId, result.receiptPath);
 ## Integration Pattern (Recommended)
 
 Use this addon only at post-tool completion boundaries for selected actions.
+
+### MCP server integration (Code Engine)
+
+The MCP server includes `write_or_modify_file` with optional provenance when enabled:
+
+```bash
+export PROVENANCE_ENABLED=true
+export PROVENANCE_WORKSPACE_ROOT=/path/to/your/project
+npm run build && node build/index.js
+```
+
+Environment variables:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PROVENANCE_ENABLED` | `false` | Turn on signed receipts |
+| `PROVENANCE_KEY_DIR` | `provenance-addon/.keys` | Persisted Ed25519 key pair |
+| `PROVENANCE_RECEIPTS_DIR` | `provenance-addon/receipts/live` | Receipt output directory |
+| `PROVENANCE_WORKSPACE_ROOT` | `process.cwd()` | Allowed write root for `write_or_modify_file` |
+| `PROVENANCE_SESSION_ID` | `session:mcp-<pid>` | Chat/session correlation |
+| `PROVENANCE_TASK_ID` | — | Optional sub-task id |
+| `PROVENANCE_GIT_REF` | — | Optional git ref in claim |
+| `PROVENANCE_LINEAGE_REF` | — | Optional ticket/lineage ref |
+
+Verify a live receipt:
+
+```bash
+node verify-receipt.mjs --key-dir .keys receipts/live/*.json
+```
 
 Recommended first actions:
 
