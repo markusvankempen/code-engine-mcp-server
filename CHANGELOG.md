@@ -23,6 +23,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 ### Changed
 - **Provenance documented as optional addon** — moved to end of main and example READMEs; not part of core MCP feature list.
 - **Bundled extension server** — synced to 1.3.0 with provenance modules and ICR login fix.
+- **Unified versioning** — `code-engine-mcp-server` (npm) and `code-engine-mcp` (VS Code extension) now share the same semver; use `npm run sync-version` before release.
 
 ## [1.2.0] - 2026-06-10
 

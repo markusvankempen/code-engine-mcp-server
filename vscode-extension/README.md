@@ -1,6 +1,6 @@
 # IBM Code Engine MCP — VS Code Extension
 
-> **v1.0.7** — Security hardened: no shell access, input validation on all container commands, `ce_refresh_icr_pull_secret` tool, auto-refresh pull secret in `proc_build_push_deploy`, improved setup docs
+> **v1.3.0** — Same release as `code-engine-mcp-server@1.3.0`: optional provenance receipts, Receipt Visualizer, ICR login fix in `proc_build_push_deploy`, `write_or_modify_file` tool
 
 Deploy containerised apps to **IBM Code Engine** using natural language. This extension wires up the `code-engine-mcp-server` as an [MCP](https://modelcontextprotocol.io) server so any AI assistant running in your IDE (GitHub Copilot, Cline, Cursor, etc.) can build images, push them to IBM Container Registry, and deploy apps — all from a chat prompt.
 
@@ -122,7 +122,7 @@ Or step by step:
 ## Troubleshooting
 
 **"Cannot find module 'ajv'"**  
-Run diagnostics — if Node.js v24+ is in use, the bundled server handles this. If using `npx` mode, ensure you're on `code-engine-mcp-server@1.0.4+`.
+Run diagnostics — if Node.js v24+ is in use, the bundled server handles this. If using `npx` mode, ensure you're on `code-engine-mcp-server@1.3.0` (extension and npm package share the same version).
 
 **MCP server not appearing in Copilot**  
 Click **Configure MCP** in the sidebar. This writes the entry to `~/Library/Application Support/Code/User/mcp.json` (macOS) and reloads the server list.
@@ -142,5 +142,5 @@ npm run compile
 ```
 
 ```bash
-npm run package        # produces code-engine-mcp-1.0.4.vsix
+npm run package        # produces code-engine-mcp-<version>.vsix (matches package.json)
 ```
