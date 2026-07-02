@@ -122,6 +122,8 @@ flowchart LR
 
 > Using only Code Engine MCP tools, deploy `examples/startrek-splash` to Code Engine project — show provenance receipts and the live app URL.
 
+> **Tip (v1.4.0):** Open the MCP Activity Dashboard with `MCP_ACTIVITY_ENABLED=true` to watch the same deploy on a live timeline. See [main README](../../README.md#-mcp-activity-dashboard-v140).
+
 **MCP arguments (example):**
 
 | Argument | Value |

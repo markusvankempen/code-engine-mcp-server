@@ -157,6 +157,14 @@ Code Engine requires containers to listen on **port 8080**. The Dockerfile patch
 
 ---
 
+## Watch the deploy live (v1.4.0)
+
+With `MCP_ACTIVITY_ENABLED=true` in your MCP server env, open the **MCP Activity Dashboard** (VS Code extension or `npm run dashboard`) while running the one-shot prompt above. You will see `proc_build_push_deploy` progress through build, push, secret refresh, and ready-poll steps with the live app URL in the task-outcome banner.
+
+See [main README — MCP Activity Dashboard](../../README.md#-mcp-activity-dashboard-v140).
+
+---
+
 ## Optional addon: Provenance
 
 > Not required for deployment. See [startrek-splash documented MCP flow](../startrek-splash/README.md#documented-example-flow-verified-deploy) for a full example including optional `provenance_receipts`.

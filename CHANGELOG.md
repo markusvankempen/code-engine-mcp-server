@@ -7,6 +7,25 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-07-02
+
+### Fixed
+- **Extension readme GitHub links** — absolute `main` branch URLs for provenance addon and changelog (Marketplace was resolving relative paths to 404s like `/tree/provenance-addon`).
+- **Extension VSIX readme** — packaged readme matches release version and feature list.
+
+### Changed
+- **Documentation** — current-release badges and readme callouts updated to v1.4.2.
+
+## [1.4.1] - 2026-07-02
+
+### Fixed
+- **Extension VSIX readme** — rebuilt package so marketplace readme matches v1.4.1 (was stale v1.3.0 text in the 1.4.0 VSIX).
+- **Extension readme GitHub links** — replaced relative paths (`../provenance-addon/`, `../../CHANGELOG.md`) with absolute `main` branch URLs; Marketplace was resolving them to 404s like `/tree/provenance-addon`.
+- **`.env` parsing** — document and enforce quoted values for `MCP_ACTIVITY_CHAT_LABEL` and other labels with spaces (fixes `mise` dotenv errors).
+
+### Changed
+- **Documentation** — current-release badges and readme callouts updated to v1.4.1 across main README, extension README, examples, and workspace hub.
+
 ## [1.4.0] - 2026-07-02
 
 ### Added
@@ -23,6 +42,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 - **Provenance visualizer** — improved timeline UX, clearer post-clear state, and expanded chat-command docs.
 - **`.env.example`** — documents optional `MCP_ACTIVITY_*` variables alongside provenance settings.
 - **Bundled extension server** — synced to 1.4.0 with activity logger, dashboard support, and provenance modules.
+- **Documentation** — README, extension README, setup guide, example walkthroughs, and deploy skill updated for v1.4.0 Activity Dashboard.
 
 ## [1.3.0] - 2026-07-02
 

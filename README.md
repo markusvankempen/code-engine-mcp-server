@@ -10,6 +10,8 @@ Also: deploy to code engine, ibm ce mcp, ai deploy containers, copilot mcp serve
 
 **MCP server for IBM Code Engine — build, push, and deploy containers from Cursor, Copilot, Claude, and Cline using natural language.**
 
+> **Current release: v1.4.2** — MCP Activity Dashboard, live activity logging, Deployments inventory tab, provenance visualizer updates.
+
 **Search terms:** `code-engine-mcp` · `ibm-code-engine` · `ibm-cloud` · `ibm-container-registry` · `mcp-server` · `model-context-protocol` · `cursor` · `github-copilot` · `claude-desktop` · `cline` · `docker` · `podman` · `serverless` · `container-deployment` · `typescript` · `npx` · `ai-agents` · `devops` · `cloud-native` · `watsonx-orchestrate`
 
 ---
@@ -20,12 +22,13 @@ Also: deploy to code engine, ibm ce mcp, ai deploy containers, copilot mcp serve
 ---
 
 [![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/markusvankempen/code-engine-mcp-server)
+[![Release](https://img.shields.io/badge/release-v1.4.2-blue)](./CHANGELOG.md#142---2026-07-02)
 [![IBM Cloud](https://img.shields.io/badge/IBM%20Cloud-Code%20Engine-1261FE)](https://cloud.ibm.com/codeengine/overview)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=nodedotjs&logoColor=white)](#prerequisites)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp)
 [![Open VSX](https://img.shields.io/badge/Open%20VSX-Registry-C160EF?logo=eclipseide&logoColor=white)](https://open-vsx.org/extension/markusvankempen/code-engine-mcp)
-[![npm](https://img.shields.io/badge/npm-code--engine--mcp--server-CB3837?logo=npm&logoColor=white)](https://www.npmjs.com/package/code-engine-mcp-server)
+[![npm](https://img.shields.io/npm/v/code-engine-mcp-server.svg?label=npm)](https://www.npmjs.com/package/code-engine-mcp-server)
 
 ## How It Works
 
@@ -63,6 +66,8 @@ flowchart TD
 - IBM Container Registry (ICR) tools — list namespaces, list images, delete images
 - IBM Code Engine project and application management tools
 - MCP-ready setup for GitHub Copilot, Cline, Bob, Claude Desktop, and the optional VS Code extension in `vscode-extension/`
+- **MCP Activity Dashboard** — live timeline of tool calls, session grouping, deploy outcome highlights, and a Deployments inventory tab (extension or dev repo)
+- **Live activity logging** — optional JSONL event stream for every MCP tool call (`MCP_ACTIVITY_*` env vars)
 - A simple local development and troubleshooting workflow
 
 ## 🚀 Quick Start
@@ -101,6 +106,50 @@ Here is an example interaction from a real session:
 > "Your app is deployed and live at: `https://developer-splash.29m5mrru3s3n.ca-tor.codeengine.appdomain.cloud`. I had to fix a minor port configuration issue in your Dockerfile, but it is successfully running now!"
 
 With this MCP server, the AI acts as an expert DevOps engineer pairing with you.
+
+## 📊 MCP Activity Dashboard (v1.4.0)
+
+See what your AI assistant is doing in real time — tool calls, idle gaps between steps, deploy outcomes, and live app URLs.
+
+```mermaid
+flowchart LR
+    A[MCP tool call] -->|MCP_ACTIVITY_ENABLED| B[events.jsonl]
+    B --> C{Dashboard}
+    C -->|VS Code extension| D[Activity tab]
+    C -->|Browser| E[localhost:8767]
+    D --> F[Deployments tab\ninventory + actions]
+```
+
+### Enable activity logging
+
+Add to your MCP client env (Cursor `.cursor/mcp.json`, VS Code `mcp.json`, etc.):
+
+```json
+"MCP_ACTIVITY_ENABLED": "true",
+"MCP_ACTIVITY_EVENTS_PATH": "/absolute/path/to/code-engine-mcp-server/dashboard/activity/live/events.jsonl",
+"MCP_ACTIVITY_SESSION_ID": "session:my-chat-001",
+"MCP_ACTIVITY_CHAT_LABEL": "Deploy Star Wars splash"
+```
+
+Restart the MCP server after changing env. Events append to `events.jsonl` on every tool start/finish — including input summaries, pipeline sub-steps (`proc_build_push_deploy`), result highlights, and optional HTTP smoke-test labels.
+
+See [.env.example](.env.example) for all `MCP_ACTIVITY_*` variables.
+
+### Open the dashboard
+
+| Method | How |
+|--------|-----|
+| **VS Code extension** | Command Palette → **IBM Code Engine MCP: Open MCP Activity Dashboard** |
+| **Browser (dev repo)** | `npm run dashboard` → http://localhost:8767/ |
+| **Live refresh** | On by default in the browser; toggle in-panel or set `codeEngineMcp.activityLiveRefresh` (extension) |
+
+The **Activity** tab shows a session timeline with tool duration, idle gaps, and a task-outcome banner (status, image, live URL). The **Deployments** tab lists projects and apps from Code Engine and supports get-details, redeploy, and delete via MCP tools.
+
+**Example chat prompt:**
+
+> *"I have a Star Wars splash page in examples/starwars-splash. Deploy it to Code Engine using only MCP tools — build for linux/amd64, push to my ICR namespace, and deploy to my Code Engine project. Show me the live URL when ready."*
+
+Open the Activity Dashboard while the assistant runs to watch `proc_build_push_deploy` progress step by step.
 
 ## Deploy Your First App
 
@@ -571,11 +620,11 @@ The same pattern works for any `npx`-runnable MCP server — just swap the `--st
 
 - [Setup Instructions](./docs/SETUP_INSTRUCTIONS.md)
 - [MCP Inspector Troubleshooting](./docs/MCP_INSPECTOR_TROUBLESHOOTING.md)
+- [VS Code MCP extension](./vscode-extension/README.md) — Activity Dashboard, Receipt Visualizer, setup & diagnostics
 - [Code Engine API Reference](./docs/CODE_ENGINE_API_REFERENCE.md)
 - [API Call Scenarios](./docs/API_CALL_SCENARIOS.md)
 - [Client README](./docs/CLIENT_README.md)
 - [Cline MCP Config Example](./docs/CLINE_CONFIG_EXAMPLE.json)
-- [VS Code MCP extension](./vscode-extension/README.md)
 - [Code of Conduct](./docs/CODE_OF_CONDUCT.md)
 - [Contributing Guide](./docs/CONTRIBUTING.md)
 - [Maintainers](./docs/MAINTAINERS.md)
@@ -597,6 +646,10 @@ code-engine-mcp-server/
 │   ├── developer-splash/             # nginx static container example
 │   ├── starwars-splash/              # nginx Star Wars crawl example
 │   └── mcp-server-supergateway/      # Host any MCP server on Code Engine via supergateway
+├── dashboard/                        # MCP Activity Dashboard (dev repo) — npm run dashboard
+│   ├── index.html                    # Activity + Deployments UI
+│   ├── serve-dashboard.mjs           # Local server on port 8767
+│   └── activity/live/events.jsonl    # Live tool-call log (gitignored runtime file)
 ├── internal/                         # Internal release notes
 ├── src/                              # Main TypeScript source code
 ├── CHANGELOG.md                      # Release history
@@ -649,6 +702,11 @@ code-engine-mcp-server/
 - ✅ `proc_build_push_deploy` — full container pipeline in one prompt (build → push → deploy → wait)
 - ✅ `proc_setup_custom_domain` — TLS cert + domain mapping in one step, returns CNAME target
 - ✅ `proc_build_run_and_deploy` — CE source build → wait → deploy app → wait → return URL
+
+### Developer Experience (v1.4.0)
+- ✅ **MCP Activity Dashboard** — session timeline, idle-gap visualization, deploy outcome banner, Deployments inventory tab
+- ✅ **Live activity logging** — JSONL event stream with input summaries, pipeline sub-steps, and HTTP probe highlights
+- ✅ **VS Code extension commands** — Open MCP Activity Dashboard, Open Optional Receipt Visualizer
 
 ## ⚙️ Configuration
 
@@ -1119,6 +1177,8 @@ Tell me what CNAME value to set in DNS.
 - `CONTAINER_RUNTIME`: Force specific runtime (docker or podman)
 - `DEBUG`: Enable debug logging
 
+> **Optional — Activity Dashboard (v1.4.0, off by default):** `MCP_ACTIVITY_*` variables log tool calls to JSONL for the live dashboard. See [MCP Activity Dashboard](#-mcp-activity-dashboard-v140) and [.env.example](.env.example).
+
 > **Optional addon:** `PROVENANCE_*` variables enable signed receipts (off by default). See [Optional addon: Provenance](#optional-addon-provenance) at the end of this README.
 
 ## 📋 Prerequisites
@@ -1184,6 +1244,28 @@ Contributions are welcome! Please open an issue or submit a pull request (see [C
 For issues and questions:
 - Check [Setup Instructions](./docs/SETUP_INSTRUCTIONS.md) and [Code Engine API Reference](./docs/CODE_ENGINE_API_REFERENCE.md)
 - Open an issue in this repository with reproduction steps and logs
+
+---
+
+## Optional: MCP Activity Dashboard
+
+> **Core observability for MCP workflows.** Unlike provenance (signed receipts), activity logging is lightweight and off by default. Enable it when you want a live view of what the assistant is doing.
+
+| Surface | Command / URL |
+|---------|---------------|
+| VS Code / Cursor extension | **IBM Code Engine MCP: Open MCP Activity Dashboard** |
+| Browser (dev repo) | `npm run dashboard` → http://localhost:8767/ |
+| Event log file | `dashboard/activity/live/events.jsonl` |
+
+**Minimal MCP env:**
+
+```json
+"MCP_ACTIVITY_ENABLED": "true"
+```
+
+The server creates the events file automatically. Use `MCP_ACTIVITY_SESSION_ID` and `MCP_ACTIVITY_CHAT_LABEL` to label sessions in the dashboard dropdown.
+
+**Troubleshooting:** If the dashboard shows no new sessions, confirm `MCP_ACTIVITY_ENABLED=true` in the MCP server env (not just chat context), restart the MCP server, and click **Show all activity** if you previously cleared the view.
 
 ---
 

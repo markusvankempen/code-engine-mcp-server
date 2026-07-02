@@ -305,6 +305,27 @@ Install from [nodejs.org](https://nodejs.org) if missing.
 
 See [MCP_INSPECTOR_TROUBLESHOOTING.md](./MCP_INSPECTOR_TROUBLESHOOTING.md) — the two most common causes are a stale ICR pull secret and an nginx port not rewritten in the Dockerfile.
 
+### Activity Dashboard shows no sessions
+
+The dashboard reads `dashboard/activity/live/events.jsonl`, which is only written when the MCP server starts with activity logging enabled.
+
+1. Add to MCP server env and restart the server:
+
+```json
+"MCP_ACTIVITY_ENABLED": "true",
+"MCP_ACTIVITY_EVENTS_PATH": "/absolute/path/to/code-engine-mcp-server/dashboard/activity/live/events.jsonl"
+```
+
+2. Open the dashboard: extension → **Open MCP Activity Dashboard**, or `npm run dashboard` → http://localhost:8767/
+3. If you cleared the view, click **Show all activity** to restore older sessions.
+
+Optional labels for the session dropdown:
+
+```json
+"MCP_ACTIVITY_SESSION_ID": "session:deploy-demo",
+"MCP_ACTIVITY_CHAT_LABEL": "Star Wars splash deploy"
+```
+
 ---
 
 ## 🔐 Security checklist
