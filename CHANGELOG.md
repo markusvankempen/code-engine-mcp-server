@@ -7,6 +7,23 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-02
+
+### Added
+- **MCP Activity Dashboard** — live timeline of MCP tool calls with session grouping, idle-gap visualization, deploy outcome highlights, and optional HTTP smoke-test labels (`dashboard/`; `npm run dashboard`).
+- **MCP activity logging** — when `MCP_ACTIVITY_ENABLED=true`, tool start/finish events append to `dashboard/activity/live/events.jsonl` with input summaries, pipeline sub-steps, and result highlights.
+- **VS Code Activity Dashboard command** — `IBM Code Engine MCP: Open MCP Activity Dashboard` with live file-watch refresh (`codeEngineMcp.activityLiveRefresh`).
+- **Deployments tab** — inventory and actions (get details, redeploy, delete) from the activity dashboard via MCP tools.
+
+### Fixed
+- **Activity logging from scripts** — `dashboard/mcp-client.mjs` now defaults `MCP_ACTIVITY_ENABLED=true` so dashboard API calls and deploy scripts emit events without extra env wiring.
+- **Clear-view UX** — dashboard shows a banner when the view is filtered and offers **Show all activity** to restore older sessions.
+
+### Changed
+- **Provenance visualizer** — improved timeline UX, clearer post-clear state, and expanded chat-command docs.
+- **`.env.example`** — documents optional `MCP_ACTIVITY_*` variables alongside provenance settings.
+- **Bundled extension server** — synced to 1.4.0 with activity logger, dashboard support, and provenance modules.
+
 ## [1.3.0] - 2026-07-02
 
 ### Added
