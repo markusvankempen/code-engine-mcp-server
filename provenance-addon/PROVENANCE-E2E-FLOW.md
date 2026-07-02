@@ -4,6 +4,8 @@ This document walks through one complete provenance path: an MCP tool writes a f
 
 **Status:** experimental v0.1 interop — see [BoundaryAttest Interop](./README.md#boundaryattest-interop-upstream) in the main README.
 
+**Chat prompts:** [PROVENANCE-CHAT-COMMANDS.md](./PROVENANCE-CHAT-COMMANDS.md) — natural language to enable provenance, deploy with validation, and verify receipts.
+
 ## 👤 Autor/Developer
 
 Markus van Kempen  

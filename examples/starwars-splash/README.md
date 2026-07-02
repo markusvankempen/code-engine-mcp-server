@@ -157,6 +157,14 @@ Code Engine requires containers to listen on **port 8080**. The Dockerfile patch
 
 ---
 
+## Optional addon: Provenance
+
+> Not required for deployment. See [startrek-splash documented MCP flow](../startrek-splash/README.md#documented-example-flow-verified-deploy) for a full example including optional `provenance_receipts`.
+
+When `PROVENANCE_ENABLED=true`, `proc_build_push_deploy` returns signed receipt paths in `provenance_receipts`. [Chat prompts](../../provenance-addon/PROVENANCE-CHAT-COMMANDS.md) · [addon README](../../provenance-addon/README.md)
+
+---
+
 ## Author
 
 Markus van Kempen  

@@ -104,6 +104,30 @@
       .btn:hover { border-color: var(--accent); background: #0f2040; }
       .btn.primary { border-color: var(--accent2); color: var(--accent); }
       .btn.danger { border-color: var(--err); color: #fca5a5; }
+      .live-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        color: var(--muted2);
+        cursor: pointer;
+        user-select: none;
+        padding: 4px 8px;
+        border: 1px solid var(--line2);
+        border-radius: 6px;
+        background: var(--panel);
+      }
+      .live-toggle input { accent-color: var(--accent); cursor: pointer; }
+      .live-toggle.on { border-color: var(--ok); color: var(--ok); }
+      .live-pill {
+        font-size: 9px;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: var(--ok-dim);
+        color: var(--ok);
+        display: none;
+      }
+      .live-pill.on { display: inline-block; }
       #fileInput { display: none; }
       label[for="fileInput"] { cursor: pointer; }
 
@@ -425,6 +449,13 @@
           </p>
         </div>
         <div class="header-actions">
+          <label class="live-toggle" id="liveRefreshLabel" title="Auto-reload from receipts/live/ (VS Code extension or local server with /api/receipts/live)">
+            <input type="checkbox" id="liveRefreshToggle" />
+            <span>Live refresh</span>
+            <span class="live-pill" id="livePill">LIVE</span>
+          </label>
+          <button type="button" class="btn" id="reloadLiveBtn" title="Reload receipts from receipts/live/" style="display:none">↻ Reload</button>
+          <a class="btn" href="PROVENANCE-CHAT-COMMANDS.md">💬 Chat commands</a>
           <a class="btn" href="test-lab.html">🧪 Test lab</a>
           <input id="fileInput" type="file" accept="application/json,.json" multiple />
           <label for="fileInput" class="btn primary">📂 Load receipts</label>
@@ -1185,6 +1216,38 @@
     });
 
     // ── Load files ─────────────────────────────────────────────
+    async function loadPublicKeyFromJson(keyData) {
+      if (keyData?.public_key_spki_base64 && keyData.algorithm === 'Ed25519') {
+        loadedPublicKey = await importPublicKey(keyData.public_key_spki_base64);
+        loadedPublicKeyId = keyData.public_key_id || '';
+      }
+    }
+
+    async function ingestReceiptObjects(items, { append = false } = {}) {
+      const next = append ? [...receipts] : [];
+      const seen = new Set(next.map((r) => r.sourceName));
+      for (const item of items) {
+        const name = item.name || 'receipt.json';
+        if (seen.has(name)) continue;
+        const parsed = item.json ?? item;
+        if (!parsed || typeof parsed !== 'object' || !parsed.claim) continue;
+        next.push(parseReceipt(parsed, name));
+        seen.add(name);
+      }
+      receipts = next.sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)));
+      if (!append) {
+        selectedSessionFilter = null;
+        selectedIdx = receipts.length > 0 ? 0 : -1;
+        replayIdx = -1;
+        isPlaying = false;
+      }
+      if (loadedPublicKey) await verifyAllReceipts();
+      renderTimeline();
+      renderList();
+      renderDetail();
+      renderDrill();
+    }
+
     $('fileInput').addEventListener('change', async (e) => {
       const files = Array.from(e.target.files || []);
       const next = [];
@@ -1192,11 +1255,7 @@
         if (file.name === '_session.json') continue;
         if (file.name === '_public_key.json') {
           try {
-            const keyData = JSON.parse(await file.text());
-            if (keyData.public_key_spki_base64 && keyData.algorithm === 'Ed25519') {
-              loadedPublicKey = await importPublicKey(keyData.public_key_spki_base64);
-              loadedPublicKeyId = keyData.public_key_id || '';
-            }
+            await loadPublicKeyFromJson(JSON.parse(await file.text()));
           } catch { /* skip invalid key */ }
           continue;
         }
@@ -1204,23 +1263,10 @@
           const text = await file.text();
           const parsed = JSON.parse(text);
           if (!parsed || typeof parsed !== 'object' || !parsed.claim) continue;
-          next.push(parseReceipt(parsed, file.name));
+          next.push({ name: file.name, json: parsed });
         } catch { /* skip invalid */ }
       }
-      receipts = next.sort((a, b) => String(a.timestamp).localeCompare(String(b.timestamp)));
-      selectedSessionFilter = null;
-      selectedIdx = receipts.length > 0 ? 0 : -1;
-      replayIdx = -1;
-      isPlaying = false;
-
-      if (loadedPublicKey) {
-        await verifyAllReceipts();
-      }
-
-      renderTimeline();
-      renderList();
-      renderDetail();
-      renderDrill();
+      await ingestReceiptObjects(next);
     });
 
     $('clearBtn').addEventListener('click', () => {
@@ -1235,10 +1281,112 @@
       renderDrill();
     });
 
+    // ── Live refresh (optional) ─────────────────────────────────
+    const LIVE_STORAGE_KEY = 'provenance-viz-live-refresh';
+    const LIVE_POLL_MS = 3000;
+    let liveRefreshEnabled = localStorage.getItem(LIVE_STORAGE_KEY) === 'true';
+    let livePollTimer = null;
+    let vscodeApi = null;
+    const isVscode = typeof acquireVsCodeApi === 'function';
+    const liveToggle = $('liveRefreshToggle');
+    const liveLabel = $('liveRefreshLabel');
+    const livePill = $('livePill');
+    const reloadLiveBtn = $('reloadLiveBtn');
+
+    function canHttpLivePoll() {
+      return location.protocol.startsWith('http') && (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+    }
+
+    function updateLiveUi() {
+      liveToggle.checked = liveRefreshEnabled;
+      liveLabel.classList.toggle('on', liveRefreshEnabled);
+      livePill.classList.toggle('on', liveRefreshEnabled);
+      reloadLiveBtn.style.display = (isVscode || canHttpLivePoll()) ? 'inline-block' : 'none';
+    }
+
+    function stopLivePoll() {
+      if (livePollTimer) {
+        clearInterval(livePollTimer);
+        livePollTimer = null;
+      }
+    }
+
+    async function pollLiveReceiptsHttp() {
+      if (!canHttpLivePoll()) return;
+      try {
+        const res = await fetch('/api/receipts/live', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.publicKey) await loadPublicKeyFromJson(data.publicKey);
+        if (data.receipts?.length) {
+          await ingestReceiptObjects(data.receipts);
+        } else if (!receipts.length) {
+          $('tlCount').textContent = data.hint || 'No receipts in receipts/live/';
+        }
+      } catch { /* API not available — use npm run serve:visualizer */ }
+    }
+
+    function startLivePoll() {
+      stopLivePoll();
+      if (!liveRefreshEnabled || isVscode || !canHttpLivePoll()) return;
+      pollLiveReceiptsHttp();
+      livePollTimer = setInterval(pollLiveReceiptsHttp, LIVE_POLL_MS);
+    }
+
+    function setLiveRefresh(on, { persist = true, notifyExtension = true } = {}) {
+      liveRefreshEnabled = Boolean(on);
+      if (persist) localStorage.setItem(LIVE_STORAGE_KEY, liveRefreshEnabled ? 'true' : 'false');
+      updateLiveUi();
+      if (isVscode && vscodeApi && notifyExtension) {
+        vscodeApi.postMessage({ command: 'setLiveRefresh', enabled: liveRefreshEnabled });
+      }
+      if (liveRefreshEnabled) startLivePoll();
+      else stopLivePoll();
+    }
+
+    liveToggle.addEventListener('change', () => setLiveRefresh(liveToggle.checked));
+    reloadLiveBtn.addEventListener('click', () => {
+      if (isVscode && vscodeApi) {
+        vscodeApi.postMessage({ command: 'reloadReceipts' });
+      } else {
+        pollLiveReceiptsHttp();
+      }
+    });
+
     // ── Init ───────────────────────────────────────────────────
     renderTimeline();
     renderList();
     renderDrill();
+    updateLiveUi();
+    if (!isVscode && liveRefreshEnabled) startLivePoll();
+
+    // VS Code extension bridge
+    window.addEventListener('message', async (event) => {
+      const msg = event.data;
+      if (!msg || msg.source !== 'code-engine-mcp-extension') return;
+      if (msg.command === 'init') {
+        setLiveRefresh(msg.liveRefreshDefault ?? false, { persist: false, notifyExtension: false });
+      }
+      if (msg.command === 'loadPublicKey' && msg.publicKey) {
+        await loadPublicKeyFromJson(msg.publicKey);
+      }
+      if (msg.command === 'loadReceipts') {
+        if (msg.publicKey) await loadPublicKeyFromJson(msg.publicKey);
+        if (msg.receipts?.length) {
+          await ingestReceiptObjects(msg.receipts);
+        } else {
+          $('tlCount').textContent = msg.hint || 'No receipts in receipts/live/ — deploy with PROVENANCE_ENABLED=true first.';
+        }
+      }
+      if (msg.command === 'appendReceipts' && msg.receipts?.length) {
+        await ingestReceiptObjects(msg.receipts, { append: true });
+      }
+    });
+
+    if (isVscode) {
+      vscodeApi = acquireVsCodeApi();
+      vscodeApi.postMessage({ command: 'visualizerReady' });
+    }
     </script>
   </body>
 </html>

@@ -53,6 +53,8 @@ Code Engine MCP adds **extended claim fields** (`tool_name`, `session_id`, `task
 
 For a **step-by-step end-to-end walkthrough** with example data, Mermaid diagrams, and a code map (CE vs BoundaryAttest ownership), see **[PROVENANCE-E2E-FLOW.md](./PROVENANCE-E2E-FLOW.md)**.
 
+For **chat prompts** (optional addon only), see **[PROVENANCE-CHAT-COMMANDS.md](./PROVENANCE-CHAT-COMMANDS.md)**. Core deploy examples without provenance: [startrek-splash](../examples/startrek-splash/README.md), [starwars-splash](../examples/starwars-splash/README.md).
+
 ## What It Does and Does Not Prove
 
 What it proves:
@@ -94,6 +96,7 @@ What it does not prove:
 | `.keys/` | Generated | Persisted Ed25519 key pair (private.pem + public.pem) |
 | `package.json` | Config | ESM metadata and npm scripts (no external dependencies) |
 | `PROVENANCE-E2E-FLOW.md` | Docs | End-to-end flow diagrams, example data, code map (CE vs BA) |
+| `PROVENANCE-CHAT-COMMANDS.md` | Docs | Chat / prompt language for provenance (Cursor, Copilot, Claude) |
 | `test-lab.html` | Tool | Browser test dashboard — interop matrix, pass/fail, demo catalog |
 | `test-manifest.json` | Config | Test suite catalog for test-lab.html |
 | `run-test-lab.sh` | Script | Local HTTP server for test-lab browser runner |
@@ -392,7 +395,9 @@ Use this addon only at post-tool completion boundaries for selected actions.
 
 ### MCP server integration (Code Engine)
 
-The MCP server includes `write_or_modify_file` with optional provenance when enabled:
+The MCP server includes `write_or_modify_file` with optional provenance when enabled.
+
+**Chat prompts:** see **[PROVENANCE-CHAT-COMMANDS.md](./PROVENANCE-CHAT-COMMANDS.md)** for what to say in Cursor/Copilot/Claude to enable provenance, label sessions, deploy with validation gates, and verify receipts.
 
 ```bash
 export PROVENANCE_ENABLED=true
@@ -440,16 +445,25 @@ Recommended integration behavior:
 
 ## Optional VS Code Visualizer
 
-If you use the included VS Code extension, there is an optional read-only receipt visualizer.
+If you use the **IBM Code Engine MCP** VS Code extension, an optional receipt visualizer is available.
 
 Open via:
 
-- IBM Code Engine sidebar -> Resources & Docs -> Receipt Visualizer (Optional)
-- Command Palette -> IBM Code Engine MCP: Open Optional Receipt Visualizer
+- IBM Code Engine sidebar → **Setup** tab → **Resources & Docs** → **Receipt Visualizer (Optional)**
+- Command Palette → **IBM Code Engine MCP: Open Optional Receipt Visualizer**
 
-The visualizer reads receipt JSON files from:
+When opened from the extension, it loads receipts from `provenance-addon/receipts/live/` once on open. **Live refresh** is optional (off by default):
 
-- provenance-addon/receipts/
+- Toggle **Live refresh** in the panel header, or set VS Code setting `codeEngineMcp.provenanceLiveRefresh`
+- When on, the extension watches `receipts/live/` for new or changed `*.json` files
+- **↻ Reload** always fetches the latest receipts manually
+
+**Browser visualizer** (`visualizer.html`):
+
+- **file://** — manual **📂 Load receipts** only; live refresh needs a local server (below)
+- **Local server** — `cd provenance-addon && npm run serve:visualizer`, open `http://localhost:8766/visualizer.html`, enable **Live refresh** to poll `/api/receipts/live` every 3s
+
+Preference is saved in browser `localStorage` (`provenance-viz-live-refresh`).
 
 ## Optional Standalone Visualizer (In This Folder)
 

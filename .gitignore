@@ -23,6 +23,8 @@ examples/deploy-mcp-server-to-code-engine/*
 provenance-addon/.keys/
 provenance-addon/receipts/artifact-demo/.keys/
 provenance-addon/receipts/live/
+provenance-addon/receipts/starwars-deploy/
+provenance-addon/receipts/startrek-deploy/
 
 # TypeScript / build config
 tsconfig.json

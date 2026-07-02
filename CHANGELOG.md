@@ -7,6 +7,23 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-02
+
+### Added
+- **Optional provenance hooks** — when `PROVENANCE_ENABLED=true`, MCP tools emit signed receipts to `provenance-addon/receipts/live/` (`write_or_modify_file`, `proc_build_push_deploy` Dockerfile validation and deploy steps).
+- **`write_or_modify_file` tool** — create or update workspace files with optional provenance receipt on completion.
+- **VS Code Receipt Visualizer** — command `IBM Code Engine MCP: Open Optional Receipt Visualizer` loads receipts from `provenance-addon/receipts/live/`; optional live refresh via `codeEngineMcp.provenanceLiveRefresh` or in-panel toggle.
+- **Provenance test lab & docs** — `PROVENANCE-CHAT-COMMANDS.md`, E2E flow doc, `serve-visualizer.mjs` for browser polling, CI manifest verify (`interop:ci`, `test-lab:verify`).
+- **Example deploy walkthroughs** — `startrek-splash` and `starwars-splash` READMEs document MCP-only deploy flows with provenance at end.
+
+### Fixed
+- **`proc_build_push_deploy` ICR push** — login to IBM Container Registry (`podman/docker login`) before push, fixing `UNAUTHORIZED` failures.
+- **`proc_build_push_deploy` provenance** — deploy success and failure paths now return `provenance_receipts` in the JSON response.
+
+### Changed
+- **Provenance documented as optional addon** — moved to end of main and example READMEs; not part of core MCP feature list.
+- **Bundled extension server** — synced to 1.3.0 with provenance modules and ICR login fix.
+
 ## [1.2.0] - 2026-06-10
 
 ### Changed

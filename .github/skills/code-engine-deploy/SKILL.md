@@ -370,3 +370,30 @@ ce_get_app_logs(project_id, app_name)
 ```
 proc_setup_custom_domain(project_id, app_name, domain, tls_cert_file, tls_key_file)
 ```
+
+---
+
+## Provenance (optional)
+
+Experimental v0.1 signed receipts for selected MCP actions. **Off by default.**
+
+**Chat prompt guide:** [provenance-addon/PROVENANCE-CHAT-COMMANDS.md](../../provenance-addon/PROVENANCE-CHAT-COMMANDS.md)
+
+When the user asks for provenance-backed work:
+
+1. Confirm `PROVENANCE_ENABLED=true` in `.env` and MCP env; restart MCP if changed
+2. Set `PROVENANCE_SESSION_ID` / `PROVENANCE_TASK_ID` when the user labels a chat or ticket
+3. **Deploy using MCP `proc_build_push_deploy`** — do not use npm deploy scripts unless the user explicitly asks
+4. Prefer `write_or_modify_file` (MCP) over shell writes when receipts are required
+5. Optional pre-flight: `interop:ci` + `test-lab:verify` in `provenance-addon/` (verifier health, not deploy)
+6. Report `provenance_receipts` from MCP responses and run `verify-receipt.mjs` when asked to audit
+
+**Example user prompts:**
+
+```
+Using only Code Engine MCP tools, deploy examples/startrek-splash with provenance on.
+```
+
+```
+Verify paths in provenance_receipts from the last proc_build_push_deploy call.
+```

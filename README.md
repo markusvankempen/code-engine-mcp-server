@@ -1119,6 +1119,8 @@ Tell me what CNAME value to set in DNS.
 - `CONTAINER_RUNTIME`: Force specific runtime (docker or podman)
 - `DEBUG`: Enable debug logging
 
+> **Optional addon:** `PROVENANCE_*` variables enable signed receipts (off by default). See [Optional addon: Provenance](#optional-addon-provenance) at the end of this README.
+
 ## 📋 Prerequisites
 
 - Node.js v18 or higher
@@ -1182,6 +1184,28 @@ Contributions are welcome! Please open an issue or submit a pull request (see [C
 For issues and questions:
 - Check [Setup Instructions](./docs/SETUP_INSTRUCTIONS.md) and [Code Engine API Reference](./docs/CODE_ENGINE_API_REFERENCE.md)
 - Open an issue in this repository with reproduction steps and logs
+
+---
+
+## Optional addon: Provenance
+
+> **Not part of core MCP functionality.** The Code Engine MCP server deploys, builds, and manages apps without provenance. The [provenance addon](./provenance-addon/) is an experimental optional layer that emits signed receipts for selected tool actions (default: **off**).
+
+| Doc | Purpose |
+|-----|---------|
+| [provenance-addon/README.md](./provenance-addon/README.md) | What receipts prove (and do not prove) |
+| [PROVENANCE-CHAT-COMMANDS.md](./provenance-addon/PROVENANCE-CHAT-COMMANDS.md) | Chat prompts when you choose to enable it |
+| [PROVENANCE-E2E-FLOW.md](./provenance-addon/PROVENANCE-E2E-FLOW.md) | Technical E2E flow |
+| [examples/startrek-splash/README.md](./examples/startrek-splash/README.md#documented-example-flow-verified-deploy) | Documented MCP deploy + optional receipts |
+
+Enable in `code-engine-mcp-server/.env` (`PROVENANCE_ENABLED=true`), restart MCP. With provenance on, `proc_build_push_deploy` returns `provenance_receipts` in its JSON response.
+
+**Example chat prompt (addon):**
+
+```
+Using only Code Engine MCP tools, deploy examples/startrek-splash.
+Provenance on — show provenance_receipts, verify with verify-receipt.mjs, and give me the live URL.
+```
 
 ---
 

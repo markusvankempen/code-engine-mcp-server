@@ -77,6 +77,16 @@ Click **Run Diagnostics** to verify:
 - ✅ MCP server is registered in `mcp.json`
 - ✅ Tool list is discovered from the running server
 
+### 5. Optional: Provenance Receipt Visualizer
+
+If you use the [provenance addon](../provenance-addon/) (`PROVENANCE_ENABLED=true`), open **Receipt Visualizer (Optional)** from the sidebar **Resources & Docs** section (or Command Palette → **Open Optional Receipt Visualizer**).
+
+The panel loads receipts from `provenance-addon/receipts/live/` on open. **Live refresh** is optional (off by default) — toggle it in the panel header or set `codeEngineMcp.provenanceLiveRefresh` in settings. Use **↻ Reload** for a manual refresh.
+
+**You need:** the workspace folder open (e.g. `code-engine` repo root) and at least one signed receipt on disk.
+
+**Browser (no extension):** `cd provenance-addon && npm run serve:visualizer` then enable **Live refresh** at `http://localhost:8766/visualizer.html`.
+
 ---
 
 ## Quick start examples
