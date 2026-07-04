@@ -7,6 +7,20 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-04
+
+### Added
+- **Code Engine Resource Tree** — a native VS Code tree in the IBM Code Engine sidebar that lists your projects and, under each, its applications, jobs, builds, secrets, and config maps. Apps show a live status dot (green = ready, yellow = pending) and open in the browser on click.
+  - Inline / context-menu actions: **App** (Open in Browser, View Logs, View Events, Restart, Delete); **Build** (View Build, Delete); **Job / Secret / Config Map** (Delete).
+  - Title-bar **Refresh** button re-loads the whole tree; the tree also auto-refreshes when the API key changes.
+- **Activity sidebar view** — the MCP Activity Dashboard is now available as a persistent webview in the sidebar (in addition to the Command Palette panel).
+- **"Code Engine Resource Tree" launcher** — a button in Setup & Diagnostics and a Quick Menu entry that reveal/focus the tree view.
+
+### Changed
+- **Tree data loading** — projects and per-project resources load in the background with a cache-first pattern (spinner while loading, clear error/empty states), so the tree renders instantly instead of blocking on server spawns.
+- **Bundled extension server** — refreshed to 1.5.0 with all 89 tools, including the Batch D operational tools (`ce_get_app_events`, `ce_get_build_run_events`, `ce_get_job_run_events`, `ce_get_build_run_logs`, `ce_restart_application`, `ce_resubmit_job_run`, `ce_cancel_job_run`, `ce_get_project_quotas`).
+- **Documentation** — current-release badges and readme callouts updated to v1.5.0 across main README and extension README.
+
 ## [1.4.2] - 2026-07-02
 
 ### Fixed

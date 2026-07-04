@@ -1,13 +1,13 @@
 # IBM Code Engine MCP — VS Code Extension
 
-> **v1.4.2** — Same release as `code-engine-mcp-server@1.4.2`: MCP Activity Dashboard, live MCP activity logging, Deployments tab, provenance visualizer updates, ICR login fix in `proc_build_push_deploy`, `write_or_modify_file` tool
+> **v1.5.0** — Same release as `code-engine-mcp-server@1.5.0`: **Projects & Resources Tree View** in the sidebar (projects → apps, jobs, builds, secrets, config maps with inline Open/Logs/Events/Restart/Delete actions), Activity sidebar view, and 8 new operational tools (system events, build-run logs, app restart, job resubmit/cancel, project quotas).
 
 Deploy containerised apps to **IBM Code Engine** using natural language. This extension wires up the `code-engine-mcp-server` as an [MCP](https://modelcontextprotocol.io) server so any AI assistant running in your IDE (GitHub Copilot, Cline, Cursor, etc.) can build images, push them to IBM Container Registry, and deploy apps — all from a chat prompt.
 
 [![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-007ACC?logo=visualstudiocode&logoColor=white)](https://marketplace.visualstudio.com/items?itemName=MarkusvanKempen.code-engine-mcp)
 [![Open VSX](https://img.shields.io/badge/Open%20VSX-Registry-C160EF?logo=eclipseide&logoColor=white)](https://open-vsx.org/extension/markusvankempen/code-engine-mcp)
 [![npm](https://img.shields.io/npm/v/code-engine-mcp-server.svg?label=npm)](https://www.npmjs.com/package/code-engine-mcp-server)
-[![Release](https://img.shields.io/badge/release-v1.4.2-blue)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/CHANGELOG.md#142---2026-07-02)
+[![Release](https://img.shields.io/badge/release-v1.5.0-blue)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/CHANGELOG.md#150---2026-07-04)
 
 ---
 
@@ -22,6 +22,20 @@ Once configured, you can talk to your AI assistant and say things like:
 > *"Deploy the developer-splash image to my Code Engine project. Check if I have a registry pull secret first, and create one if needed."*
 
 The assistant calls the MCP tools behind the scenes — no CLI commands to remember.
+
+### Projects & Resources Tree (v1.5.0)
+
+The **IBM Code Engine** sidebar now includes a native **Projects & Resources** tree:
+
+- Browse your **projects** and expand each to see its **applications, jobs, builds, secrets, and config maps**.
+- Apps show a status dot (🟢 ready / 🟡 pending); click an app to open its URL in the browser.
+- Right-click (or use the inline icons) for quick actions:
+  - **App** — Open in Browser, View Logs, View Events, Restart, Delete
+  - **Build** — View Build, Delete
+  - **Job / Secret / Config Map** — Delete
+- Use the **Refresh** button in the tree title bar to reload; the tree also refreshes automatically when you change your API key.
+
+You can reveal the tree from **Setup & Diagnostics → Projects & Resources Tree**, or via **IBM Code Engine MCP: Show Quick Menu → Open Projects & Resources Tree**.
 
 ### Watch it live (v1.4.0)
 

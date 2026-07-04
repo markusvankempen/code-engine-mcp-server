@@ -10,7 +10,7 @@ Also: deploy to code engine, ibm ce mcp, ai deploy containers, copilot mcp serve
 
 **MCP server for IBM Code Engine — build, push, and deploy containers from Cursor, Copilot, Claude, and Cline using natural language.**
 
-> **Current release: v1.4.2** — MCP Activity Dashboard, live activity logging, Deployments inventory tab, provenance visualizer updates.
+> **Current release: v1.5.0** — Projects & Resources Tree View in the sidebar (apps, jobs, builds, secrets, config maps with inline actions), Activity sidebar view, plus 8 new operational tools (events, build-run logs, app restart, job resubmit/cancel, project quotas).
 
 **Search terms:** `code-engine-mcp` · `ibm-code-engine` · `ibm-cloud` · `ibm-container-registry` · `mcp-server` · `model-context-protocol` · `cursor` · `github-copilot` · `claude-desktop` · `cline` · `docker` · `podman` · `serverless` · `container-deployment` · `typescript` · `npx` · `ai-agents` · `devops` · `cloud-native` · `watsonx-orchestrate`
 
@@ -22,7 +22,7 @@ Also: deploy to code engine, ibm ce mcp, ai deploy containers, copilot mcp serve
 ---
 
 [![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/markusvankempen/code-engine-mcp-server)
-[![Release](https://img.shields.io/badge/release-v1.4.2-blue)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/CHANGELOG.md#142---2026-07-02)
+[![Release](https://img.shields.io/badge/release-v1.5.0-blue)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/CHANGELOG.md#150---2026-07-04)
 [![IBM Cloud](https://img.shields.io/badge/IBM%20Cloud-Code%20Engine-1261FE)](https://cloud.ibm.com/codeengine/overview)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=nodedotjs&logoColor=white)](#prerequisites)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/LICENSE)
@@ -47,7 +47,7 @@ flowchart TD
     E -->|image reference| F
 
     G -->|proc_build_push_deploy| D
-    G -->|proc_build_run_and_deploy| F
+    G -->|proc_apply_manifest| F
 
     F --> H[(Projects\nApps\nBuilds\nJobs\nSecrets\nDomains)]
 
@@ -667,17 +667,23 @@ code-engine-mcp-server/
 - ✅ Detect container runtime (Docker/Podman)
 - ✅ Build container images (with platform targeting for amd64)
 - ✅ Push images to registries
+- ✅ Tag images with a new name/tag before pushing
 - ✅ List local images
 - ✅ Test containers locally
 - ✅ Get container logs
 - ✅ Stop and remove containers
 - ✅ List all containers
-- ✅ Validate Dockerfile for Code Engine compatibility (`ce_validate_dockerfile`) — checks architecture, port, nginx sed patterns, USER, CMD
+- ✅ Inspect container image architecture, labels, and env
+- ✅ Prune unused/dangling images to reclaim disk space
+- ✅ Remove a local container image
+- ✅ Scaffold a Code Engine-compatible Dockerfile (`scaffold_dockerfile`)
 
 ### IBM Container Registry (ICR)
+- ✅ Log in to IBM Container Registry (`login_to_registry`)
 - ✅ List ICR namespaces
 - ✅ List images with optional namespace filter
 - ✅ Delete images by tag
+- ✅ Create ICR namespaces (`icr_create_namespace`)
 
 ### IBM Code Engine Tools
 - ✅ List, create, and delete projects
@@ -686,21 +692,28 @@ code-engine-mcp-server/
 - ✅ List applications and get public URLs
 - ✅ Get per-instance status (running, restarts, started-at)
 - ✅ Get application logs per instance
-- ✅ Build and job management
-- ✅ Secrets and ConfigMaps
-- ✅ Custom domain mappings (create, list, get, delete)
+- ✅ Build and job management (build configs, build runs, events, logs)
+- ✅ Validate Dockerfile for Code Engine compatibility (`ce_validate_dockerfile`)
+- ✅ Secrets and ConfigMaps (CRUD + update-in-place)
+- ✅ Custom domain mappings (create, list, get, update, delete)
+- ✅ Service bindings — connect IBM Cloud services to CE apps
 - ✅ TLS secrets from Let's Encrypt / certbot PEM files (`ce_create_tls_secret_from_pem`)
 - ✅ TLS cert renewal in-place without disrupting domain mappings (`ce_renew_tls_secret_from_pem`)
 - ✅ Update any secret in-place (`ce_update_secret`)
 - ✅ Refresh ICR pull secret with current API key credentials (`ce_refresh_icr_pull_secret`) — fixes `no_revision_ready` failures caused by stale registry credentials without needing the CLI
-- ✅ Wait for app deployment or build run to complete (`ce_wait_for_app_ready`, `ce_wait_for_build_run`)
+- ✅ Restart app instances, roll back to a previous revision (`ce_restart_application`, `ce_rollback_application`)
+- ✅ Resubmit or cancel job runs (`ce_resubmit_job_run`, `ce_cancel_job_run`)
+- ✅ Kubernetes system events for apps, build runs, and job runs
+- ✅ Project resource quotas and public egress IPs
+- ✅ Sync env vars from a local `.env` file (`ce_sync_env_from_dotenv`)
+- ✅ Find idle / cost-incurring apps (`ce_find_idle_apps`)
+- ✅ Wait for app deployment to complete (`ce_wait_for_app_ready`)
 - ✅ IAM token info and diagnostics (`iam_get_token_info`)
-- ✅ Create ICR namespaces via REST API (`icr_create_namespace`)
 
 ### Procedures
 - ✅ `proc_build_push_deploy` — full container pipeline in one prompt (build → push → deploy → wait)
 - ✅ `proc_setup_custom_domain` — TLS cert + domain mapping in one step, returns CNAME target
-- ✅ `proc_build_run_and_deploy` — CE source build → wait → deploy app → wait → return URL
+- ✅ `proc_apply_manifest` — apply a declarative JSON manifest (`ce-deploy.json`) to create/update all CE resources
 
 ### Developer Experience (v1.4.0)
 - ✅ **MCP Activity Dashboard** — session timeline, idle-gap visualization, deploy outcome banner, Deployments inventory tab
@@ -1047,11 +1060,11 @@ Tell me what CNAME value to set in DNS.
 
 ## 🛠️ Available Tools
 
-63 tools total: 9 container tools + 4 ICR tools + 46 Code Engine tools + 1 IAM tool + 3 procedures.
+89 tools total: 13 container tools + 5 ICR/registry tools + 66 Code Engine tools + 1 IAM tool + 3 procedures + 1 workspace tool.
 
 > **Procedures** bundle multiple tools into a single call. Use them for common end-to-end workflows.
 
-### Container Tools (8)
+### Container Tools (13)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
@@ -1060,30 +1073,38 @@ Tell me what CNAME value to set in DNS.
 | `list_local_containers` | List local containers | `runtime`, `all` |
 | `build_container_image` | Build a container image | `dockerfile_path`, `image_name`, `context_path` |
 | `push_container_image` | Push image to registry | `image_name`, `runtime` |
+| `tag_container_image` | Tag an image with a new name/tag before pushing | `source_image`, `target_image`, `runtime` |
 | `test_container_locally` | Run container for local testing | `image_name`, `port_mapping`, `env_vars` |
 | `get_container_logs` | Get logs from a running container | `container_id`, `runtime` |
 | `stop_local_container` | Stop and remove a container | `container_id`, `runtime` |
-| `ce_validate_dockerfile` | Validate a Dockerfile for Code Engine compatibility (architecture, port, nginx sed patterns, USER, CMD) | `dockerfile_path`, `context_path`, `expected_port` |
+| `inspect_container_image` | Inspect image architecture, labels, and env | `image_name`, `runtime` |
+| `prune_images` | Remove unused/dangling images to reclaim disk space | `runtime`, `all` |
+| `remove_local_image` | Remove a local container image | `image_name`, `runtime` |
+| `scaffold_dockerfile` | Generate a Code Engine-compatible Dockerfile for an app folder | `app_folder`, `app_type`, `port` |
 
-### IBM Container Registry Tools (4)
+### IBM Container Registry Tools (5)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
+| `login_to_registry` | Log in to IBM Container Registry so images can be pushed | `registry`, `username`, `password`, `runtime` |
 | `icr_list_namespaces` | List ICR namespaces in your account | `region` |
 | `icr_list_images` | List images in ICR (optionally filtered by namespace) | `namespace`, `region` |
 | `icr_delete_image` | Delete an image by full tag | `image`, `region` |
 | `icr_create_namespace` | Create a new ICR namespace | `namespace`, `region` |
 
-### Code Engine: Projects (4)
+### Code Engine: Projects (7)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
 | `ce_list_projects` | List all projects in a region | — |
 | `ce_get_project` | Get project details | `project_id` |
+| `ce_get_project_status` | Get project status (readiness, enabled components) | `project_id` |
+| `ce_get_project_quotas` | Get resource quotas: Used-vs-Limit for CPU, memory, apps, jobs | `project_id` |
+| `ce_list_egress_ips` | List public egress IPs used by a project | `project_id` |
 | `ce_create_project` | Create a new project | `name`, `resource_group_id` |
 | `ce_delete_project` | Delete a project | `project_id` |
 
-### Code Engine: Applications (9)
+### Code Engine: Applications (14)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
@@ -1091,13 +1112,18 @@ Tell me what CNAME value to set in DNS.
 | `ce_get_application` | Get application details and public URL | `project_id`, `app_name` |
 | `ce_create_application` | Deploy a new application | `project_id`, `name`, `image`, `image_secret`, `port`, `env_vars`, `run_args`, `run_commands` |
 | `ce_update_application` | Update image, scaling, env, pull secret, run args | `project_id`, `app_name`, `image`, `image_secret`, `scale_*`, `run_args`, `run_commands` |
+| `ce_rollback_application` | Roll back to a previous revision | `project_id`, `app_name`, `revision_name` |
+| `ce_restart_application` | Restart running instances of an app | `project_id`, `app_name` |
 | `ce_delete_application` | Delete an application | `project_id`, `app_name` |
 | `ce_list_app_instances` | List all running instances with status | `project_id`, `app_name` |
 | `ce_get_app_instance` | Get status details for a specific instance | `project_id`, `app_name`, `instance_name` |
+| `ce_list_app_revisions` | List all revisions (deployed versions) of an app | `project_id`, `app_name` |
+| `ce_get_app_revision` | Get details of a specific revision | `project_id`, `app_name`, `revision_name` |
 | `ce_get_app_logs` | Get logs for an app instance | `project_id`, `app_name`, `instance_name` |
+| `ce_get_app_events` | Get Kubernetes system events for an app | `project_id`, `app_name` |
 | `ce_wait_for_app_ready` | Poll until app status is ready or timeout; returns `poll_history` | `project_id`, `app_name`, `timeout_seconds` |
 
-### Code Engine: Builds (9)
+### Code Engine: Builds (10)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
@@ -1107,22 +1133,26 @@ Tell me what CNAME value to set in DNS.
 | `ce_delete_build` | Delete a build configuration | `project_id`, `build_name` |
 | `ce_list_build_runs` | List build runs | `project_id` |
 | `ce_get_build_run` | Get build run status | `project_id`, `build_run_name` |
+| `ce_get_build_run_events` | Get Kubernetes events for a build run | `project_id`, `build_run_name` |
+| `ce_get_build_run_logs` | Get the build output logs for a build run | `project_id`, `build_run_name` |
 | `ce_create_build_run` | Start a build run | `project_id`, `build_name` |
-| `ce_delete_build_run` | Delete a build run | `project_id`, `build_run_name` |
-| `ce_wait_for_build_run` | Poll until build run succeeds or fails; returns `poll_history` | `project_id`, `build_run_name`, `timeout_seconds` |
+| `ce_validate_dockerfile` | Validate a Dockerfile for Code Engine compatibility (architecture, port, nginx sed patterns, USER, CMD) | `dockerfile_path`, `context_path`, `expected_port` |
 
-### Code Engine: Jobs (8)
+### Code Engine: Jobs (11)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
 | `ce_list_jobs` | List job definitions | `project_id` |
 | `ce_get_job` | Get job definition details | `project_id`, `job_name` |
 | `ce_create_job` | Create a job definition | `project_id`, `name`, `image` |
+| `ce_update_job` | Update an existing job definition | `project_id`, `job_name` |
 | `ce_delete_job` | Delete a job definition | `project_id`, `job_name` |
 | `ce_list_job_runs` | List job runs | `project_id`, `job_name` (optional) |
 | `ce_get_job_run` | Get job run status | `project_id`, `job_run_name` |
+| `ce_get_job_run_events` | Get Kubernetes events for a job run | `project_id`, `job_run_name` |
 | `ce_create_job_run` | Submit a job run | `project_id`, `job_name` |
-| `ce_delete_job_run` | Delete a job run | `project_id`, `job_run_name` |
+| `ce_cancel_job_run` | Cancel a running job run | `project_id`, `job_run_name` |
+| `ce_resubmit_job_run` | Resubmit an existing job run with the same config | `project_id`, `job_run_name` |
 
 ### Code Engine: Secrets (8)
 
@@ -1137,23 +1167,41 @@ Tell me what CNAME value to set in DNS.
 | `ce_create_tls_secret_from_pem` | Create a TLS secret from PEM files | `project_id`, `secret_name`, `cert_pem_path`, `key_pem_path` |
 | `ce_renew_tls_secret_from_pem` | Renew an existing TLS secret from updated PEM files | `project_id`, `secret_name`, `cert_pem_path`, `key_pem_path` |
 
-### Code Engine: ConfigMaps (4)
+### Code Engine: ConfigMaps (5)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
 | `ce_list_config_maps` | List configmaps | `project_id` |
 | `ce_get_config_map` | Get configmap details | `project_id`, `config_map_name` |
 | `ce_create_config_map` | Create a configmap | `project_id`, `name`, `data` |
+| `ce_update_config_map` | Update an existing configmap (PATCH) | `project_id`, `config_map_name`, `data` |
 | `ce_delete_config_map` | Delete a configmap | `project_id`, `config_map_name` |
 
-### Code Engine: Domain Mappings (4)
+### Code Engine: Domain Mappings (5)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
 | `ce_list_domain_mappings` | List all custom domain mappings | `project_id` |
 | `ce_get_domain_mapping` | Get status and CNAME target for a mapping | `project_id`, `domain_name` |
 | `ce_create_domain_mapping` | Map a custom domain to an app | `project_id`, `domain_name`, `app_name`, `tls_secret` |
+| `ce_update_domain_mapping` | Update an existing custom domain mapping | `project_id`, `domain_name` |
 | `ce_delete_domain_mapping` | Delete a custom domain mapping | `project_id`, `domain_name` |
+
+### Code Engine: Bindings (4)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `ce_list_bindings` | List all service bindings in a project | `project_id` |
+| `ce_get_binding` | Get details of a specific service binding | `project_id`, `binding_id` |
+| `ce_create_binding` | Create a service binding to an IBM Cloud service instance | `project_id`, `app_name`, `prefix`, `secret_name` |
+| `ce_delete_binding` | Delete a service binding | `project_id`, `binding_id` |
+
+### Code Engine: Utilities (2)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `ce_find_idle_apps` | Report apps with scale_min=0 that may be incurring cost | `project_id` |
+| `ce_sync_env_from_dotenv` | Read a local `.env` file and apply its key/value pairs to a CE app | `project_id`, `app_name`, `dotenv_path` |
 
 ### IBM Cloud IAM (1)
 
@@ -1167,7 +1215,13 @@ Tell me what CNAME value to set in DNS.
 |------|-------------|----------------|
 | `proc_build_push_deploy` | Build container for linux/amd64 → push → create/update CE app → wait for ready → return URL + `poll_history` | `context_path`, `project_id_or_name`, `app_name`, `image_secret`, `icr_namespace`, `image_tag` (default `latest`), `icr_host` (default `us.icr.io`), `port`, `timeout_seconds` |
 | `proc_setup_custom_domain` | Read PEM files → create TLS secret → create domain mapping → return CNAME target | `project_id_or_name`, `app_name`, `domain_name`, `tls_secret_name`, `cert_pem_path`, `key_pem_path` |
-| `proc_build_run_and_deploy` | Start CE build run → wait for success → create/update app → wait for ready → return URL + `build_poll_history` + `app_poll_history` | `project_id_or_name`, `build_name`, `app_name`, `image_secret`, `port`, `build_timeout_seconds`, `deploy_timeout_seconds` |
+| `proc_apply_manifest` | Apply a declarative JSON deployment manifest (`ce-deploy.json`) to Code Engine — creates or updates all resources | `manifest_path`, `project_id_or_name` |
+
+### Workspace Tools (1)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `write_or_modify_file` | Write or update a text file in the workspace | `path`, `content` |
 
 ## 🔐 Environment Variables
 
