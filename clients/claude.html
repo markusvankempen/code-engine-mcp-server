@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Desktop · Code Engine MCP</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="client.css">
+</head>
+<body>
+  <header>
+    <img src="icon.svg" alt="">
+    <div>
+      <h1>Claude Desktop</h1>
+      <p>macOS: <code>~/Library/Application Support/Claude/claude_desktop_config.json</code><br>
+        Windows: <code>%APPDATA%\Claude\claude_desktop_config.json</code></p>
+    </div>
+  </header>
+  <nav>
+    <a href="index.html">Clients</a>
+    <a href="cursor.html">Cursor</a>
+    <a href="vscode.html">VS Code</a>
+    <a href="claude.html" aria-current="page">Claude</a>
+    <a href="windsurf.html">Windsurf</a>
+    <a href="cli.html">CLI</a>
+    <a href="browser.html">Browser</a>
+    <a href="settings.html">Settings</a>
+  </nav>
+  <main>
+    <p>Quit Claude and open it again after you save. The desktop file starts a local process. It does not take a URL on its own.</p>
+
+    <div class="codehead">
+      <p>Local npx</p>
+      <button type="button" data-copy="local">Copy</button>
+    </div>
+    <p class="muted">stdio. The IBM Cloud key is read by the server process.</p>
+    <pre id="local">{
+  "mcpServers": {
+    "code-engine": {
+      "command": "npx",
+      "args": ["-y", "code-engine-mcp-server@latest"],
+      "env": {
+        "IBMCLOUD_API_KEY": "your-ibm-cloud-api-key",
+        "IBMCLOUD_REGION": "us-south"
+      }
+    }
+  }
+}</pre>
+
+    <div class="codehead">
+      <p>Hosted server</p>
+      <button type="button" data-copy="remote">Copy</button>
+    </div>
+    <p class="muted"><code>mcp-remote</code> opens the hosted URL from that local process. The API key is set on the hosted server.</p>
+    <pre id="remote">{
+  "mcpServers": {
+    "code-engine": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://your-app.namespace.region.codeengine.appdomain.cloud/mcp"
+      ]
+    }
+  }
+}</pre>
+    <p>When auth mode is <code>writes</code> or <code>all</code>, pass the server key the way <code>mcp-remote</code> documents an Authorization header. Auth mode <code>open</code> needs no extra key. For a local stdio process, set <code>MCP_API_KEY</code> in <code>env</code>.</p>
+  </main>
+  <footer>
+    <a href="https://github.com/markusvankempen/code-engine-mcp-server">code-engine-mcp-server</a>
+    · <a href="index.html">All clients</a>
+  </footer>
+  <script src="client.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cursor · Code Engine MCP</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="client.css">
+</head>
+<body>
+  <header>
+    <img src="icon.svg" alt="">
+    <div>
+      <h1>Cursor</h1>
+      <p>Project file <code>.cursor/mcp.json</code>, or <code>~/.cursor/mcp.json</code> for every project.</p>
+    </div>
+  </header>
+  <nav>
+    <a href="index.html">Clients</a>
+    <a href="cursor.html" aria-current="page">Cursor</a>
+    <a href="vscode.html">VS Code</a>
+    <a href="claude.html">Claude</a>
+    <a href="windsurf.html">Windsurf</a>
+    <a href="cli.html">CLI</a>
+    <a href="browser.html">Browser</a>
+    <a href="settings.html">Settings</a>
+  </nav>
+  <main>
+    <p>Save the file. Open Cursor Settings → MCP and turn <code>code-engine</code> on. A green dot means the handshake worked. In Agent chat, ask: list my Code Engine projects.</p>
+
+    <div class="codehead">
+      <p>Local npx</p>
+      <button type="button" data-copy="local">Copy</button>
+    </div>
+    <p class="muted">Cursor starts the process. The IBM Cloud key stays in this file, on your machine. Node.js 18 or newer is required.</p>
+    <pre id="local">{
+  "mcpServers": {
+    "code-engine": {
+      "command": "npx",
+      "args": ["-y", "code-engine-mcp-server@latest"],
+      "env": {
+        "IBMCLOUD_API_KEY": "your-ibm-cloud-api-key",
+        "IBMCLOUD_REGION": "us-south"
+      }
+    }
+  }
+}</pre>
+
+    <div class="codehead">
+      <p>Hosted server</p>
+      <button type="button" data-copy="hosted">Copy</button>
+    </div>
+    <p class="muted">Streamable HTTP. Put your app URL in place of the host. The API key is set on that server, not in this file.</p>
+    <pre id="hosted">{
+  "mcpServers": {
+    "code-engine": {
+      "url": "https://your-app.namespace.region.codeengine.appdomain.cloud/mcp"
+    }
+  }
+}</pre>
+
+    <h2>When a server key is required</h2>
+    <p>Auth mode <code>open</code> accepts tool calls with no extra credential. <code>describe_server</code> stays open in every mode. When the mode is <code>writes</code> or <code>all</code>, add the header on the hosted entry. Over stdio, set <code>MCP_API_KEY</code> or <code>MCP_USERNAME</code> and <code>MCP_PASSWORD</code>.</p>
+    <pre id="keyed">{
+  "mcpServers": {
+    "code-engine": {
+      "url": "https://your-app.namespace.region.codeengine.appdomain.cloud/mcp",
+      "headers": {
+        "Authorization": "Bearer your-server-api-key"
+      }
+    }
+  }
+}</pre>
+    <p class="muted">An older Cursor setup reaches the same host through <code>npx mcp-remote</code> and <code>/sse</code>. The <code>url</code> block above is the current Streamable HTTP entry.</p>
+  </main>
+  <footer>
+    <a href="https://github.com/markusvankempen/code-engine-mcp-server">code-engine-mcp-server</a>
+    · <a href="index.html">All clients</a>
+  </footer>
+  <script src="client.js"></script>
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VS Code · Code Engine MCP</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="client.css">
+</head>
+<body>
+  <header>
+    <img src="icon.svg" alt="">
+    <div>
+      <h1>VS Code</h1>
+      <p>Workspace <code>.vscode/mcp.json</code>, or Command Palette → MCP: Open User Configuration.</p>
+    </div>
+  </header>
+  <nav>
+    <a href="index.html">Clients</a>
+    <a href="cursor.html">Cursor</a>
+    <a href="vscode.html" aria-current="page">VS Code</a>
+    <a href="claude.html">Claude</a>
+    <a href="windsurf.html">Windsurf</a>
+    <a href="cli.html">CLI</a>
+    <a href="browser.html">Browser</a>
+    <a href="settings.html">Settings</a>
+  </nav>
+  <main>
+    <p>Command Palette → MCP: List Servers → start <code>code-engine</code>. In Copilot Chat, confirm the server is selected in the tools list, then ask to list Code Engine projects.</p>
+
+    <div class="codehead">
+      <p>Local npx</p>
+      <button type="button" data-copy="local">Copy</button>
+    </div>
+    <p class="muted">stdio</p>
+    <pre id="local">{
+  "servers": {
+    "code-engine": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "code-engine-mcp-server@latest"],
+      "env": {
+        "IBMCLOUD_API_KEY": "your-ibm-cloud-api-key",
+        "IBMCLOUD_REGION": "us-south"
+      }
+    }
+  }
+}</pre>
+
+    <div class="codehead">
+      <p>Hosted server</p>
+      <button type="button" data-copy="hosted">Copy</button>
+    </div>
+    <p class="muted">HTTP. Replace the host with your app.</p>
+    <pre id="hosted">{
+  "servers": {
+    "code-engine": {
+      "type": "http",
+      "url": "https://your-app.namespace.region.codeengine.appdomain.cloud/mcp"
+    }
+  }
+}</pre>
+
+    <h2>When a server key is required</h2>
+    <p>Leave this out while auth mode is <code>open</code>. Add it when the mode is <code>writes</code> or <code>all</code>.</p>
+    <pre id="keyed">{
+  "servers": {
+    "code-engine": {
+      "type": "http",
+      "url": "https://your-app.namespace.region.codeengine.appdomain.cloud/mcp",
+      "headers": {
+        "Authorization": "Bearer your-server-api-key"
+      }
+    }
+  }
+}</pre>
+    <p class="muted">A legacy entry uses <code>"type": "sse"</code> and a URL that ends in <code>/sse</code>.</p>
+  </main>
+  <footer>
+    <a href="https://github.com/markusvankempen/code-engine-mcp-server">code-engine-mcp-server</a>
+    · <a href="index.html">All clients</a>
+  </footer>
+  <script src="client.js"></script>
+</body>
+</html>

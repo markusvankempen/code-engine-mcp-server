@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CLI · Code Engine MCP</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="client.css">
+</head>
+<body>
+  <header>
+    <img src="icon.svg" alt="">
+    <div>
+      <h1>CLI</h1>
+      <p>A small client in this repo. It starts the MCP server over stdio and prints each tool result.</p>
+    </div>
+  </header>
+  <nav>
+    <a href="index.html">Clients</a>
+    <a href="cursor.html">Cursor</a>
+    <a href="vscode.html">VS Code</a>
+    <a href="claude.html">Claude</a>
+    <a href="windsurf.html">Windsurf</a>
+    <a href="cli.html" aria-current="page">CLI</a>
+    <a href="browser.html">Browser</a>
+    <a href="settings.html">Settings</a>
+  </nav>
+  <main>
+    <p class="muted">This command line client lives in the source tree, so run it from a checkout of the source. The editor pages and the browser page need no checkout.</p>
+    <p>Build once, then open the prompt. <code>npm start</code> runs <code>build/simple-client.js</code>. It reads <code>IBMCLOUD_API_KEY</code> from the repo <code>.env</code>.</p>
+    <pre>npm run build
+npm start</pre>
+    <p>The prompt is <code>mcp&gt;</code>. Type <code>help</code>, then a command. <code>exit</code> quits. The same commands work without the prompt:</p>
+    <pre>./run-client.sh projects
+npm start detect</pre>
+
+    <h2>Commands</h2>
+    <p>This client calls a short list. Editors see the full catalog of 28 tools.</p>
+    <pre>detect
+images
+containers
+build &lt;dockerfile&gt; &lt;name&gt; &lt;context&gt;
+push &lt;image&gt;
+test &lt;image&gt; [port]
+logs &lt;container_id&gt;
+stop &lt;container_id&gt;
+projects
+help
+exit</pre>
+    <p class="muted"><code>projects</code> calls <code>ce_list_projects</code>. The container commands call <code>detect_container_runtime</code>, <code>list_local_images</code>, <code>list_local_containers</code>, <code>build_container_image</code>, <code>push_container_image</code>, <code>test_container_locally</code>, <code>get_container_logs</code>, and <code>stop_local_container</code>. Docker or Podman must be on <code>PATH</code> for those.</p>
+
+    <h2>Where the code is</h2>
+    <p><code>src/simple-client.ts</code> is the client. <code>run-client.sh</code> loads <code>.env</code> and runs the built file. <code>npm run client</code> runs the TypeScript source with <code>tsx</code> while you are changing it.</p>
+  </main>
+  <footer>
+    <a href="https://github.com/markusvankempen/code-engine-mcp-server">code-engine-mcp-server</a>
+    · <a href="index.html">All clients</a>
+  </footer>
+</body>
+</html>

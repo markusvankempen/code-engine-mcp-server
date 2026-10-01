@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Code Engine MCP clients</title>
+  <meta name="description" content="How to connect Cursor, VS Code, Claude Desktop, Windsurf, the CLI, and a browser to the IBM Code Engine MCP server.">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="client.css">
+</head>
+<body>
+  <header>
+    <img src="icon.svg" alt="">
+    <div>
+      <h1>Connect a client</h1>
+      <p>IBM Code Engine · <code>code-engine-mcp-server</code></p>
+    </div>
+  </header>
+  <nav>
+    <a href="index.html" aria-current="page">Clients</a>
+    <a href="cursor.html">Cursor</a>
+    <a href="vscode.html">VS Code</a>
+    <a href="claude.html">Claude</a>
+    <a href="windsurf.html">Windsurf</a>
+    <a href="cli.html">CLI</a>
+    <a href="browser.html">Browser</a>
+    <a href="settings.html">Settings</a>
+  </nav>
+  <main>
+    <p class="lead">Copy one config into an editor, or use the <code>mcp&gt;</code> CLI in this repo. The server publishes 28 tools. IBM Cloud calls need <code>IBMCLOUD_API_KEY</code> on the server process.</p>
+    <p class="muted">The npm package is <a href="https://www.npmjs.com/package/code-engine-mcp-server">code-engine-mcp-server</a>. A local HTTP desk listens on <code>http://127.0.0.1:8787/mcp</code>. A deployed app uses <code>https://your-app.&lt;namespace&gt;.&lt;region&gt;.codeengine.appdomain.cloud/mcp</code>.</p>
+
+    <a class="card" href="cursor.html">
+      <strong>Cursor</strong>
+      <span><code>~/.cursor/mcp.json</code> or <code>.cursor/mcp.json</code>. stdio through npx, or a hosted URL.</span>
+    </a>
+    <a class="card" href="vscode.html">
+      <strong>VS Code</strong>
+      <span>User or workspace <code>mcp.json</code>, with <code>type</code> set to <code>stdio</code> or <code>http</code>.</span>
+    </a>
+    <a class="card" href="claude.html">
+      <strong>Claude Desktop</strong>
+      <span>A local <code>npx</code> process, or <code>mcp-remote</code> when the desk is hosted.</span>
+    </a>
+    <a class="card" href="windsurf.html">
+      <strong>Windsurf</strong>
+      <span>One global file. A remote server uses <code>serverUrl</code>, not <code>url</code>.</span>
+    </a>
+    <a class="card" href="cli.html">
+      <strong>CLI</strong>
+      <span><code>npm start</code> opens <code>mcp&gt;</code>. Same commands work as <code>./run-client.sh projects</code>. Needs a source checkout.</span>
+    </a>
+    <a class="card" href="browser.html">
+      <strong>Browser</strong>
+      <span>Pick a published tool and action, then call it. <code>ce_app</code> action <code>list</code> shows deployed applications.</span>
+    </a>
+    <a class="card" href="settings.html">
+      <strong>Settings</strong>
+      <span>Call <code>get_settings</code> and <code>update_settings</code> for region and the activity log.</span>
+    </a>
+
+    <h2>Open these pages</h2>
+    <p>With the HTTP server running, open <a href="/clients/">/clients/</a> on that host. The browser page then calls <code>/mcp</code> on the same origin.</p>
+    <pre>MCP_MODE=http PORT=8787 npx -y code-engine-mcp-server</pre>
+    <p>Or serve this folder by itself. A loopback page may call the server. A page hosted elsewhere is refused until <code>CORS_ORIGINS</code> lists that origin.</p>
+    <pre>cd clients
+python3 -m http.server 8765</pre>
+    <p>Then open <a href="http://127.0.0.1:8765/">http://127.0.0.1:8765/</a>. Point the browser page at <code>http://127.0.0.1:8787/mcp</code>.</p>
+  </main>
+  <footer>
+    <a href="https://github.com/markusvankempen/code-engine-mcp-server">code-engine-mcp-server</a>
+    · <a href="https://markusvankempen.github.io/">Markus van Kempen</a>
+    · <a href="/health">Desk</a>
+  </footer>
+</body>
+</html>

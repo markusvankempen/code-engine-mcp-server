@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings · Code Engine MCP</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="client.css">
+</head>
+<body>
+  <header>
+    <img src="icon.svg" alt="">
+    <div>
+      <h1>Settings</h1>
+      <p>Calls <code>get_settings</code>, <code>server_settings</code>, and <code>server_access</code>.</p>
+    </div>
+  </header>
+  <nav>
+    <a href="index.html">Clients</a>
+    <a href="cursor.html">Cursor</a>
+    <a href="vscode.html">VS Code</a>
+    <a href="claude.html">Claude</a>
+    <a href="windsurf.html">Windsurf</a>
+    <a href="cli.html">CLI</a>
+    <a href="browser.html">Browser</a>
+    <a href="settings.html" aria-current="page">Settings</a>
+  </nav>
+  <main>
+    <p>Save writes the default region, the activity log, and the audit trace on the server in the MCP URL. The Code Engine API key is the IBM Cloud key those tools call with. It is saved with <code>server_settings</code> action <code>secrets</code> and is not an MCP API key. Auth mode, rate limit, and the page lock stay admin controls.</p>
+    <p class="muted">Auth mode <code>open</code> accepts this call with no key. <code>writes</code> or <code>all</code> needs a bearer key with the write scope. <code>npm</code> HTTP mode uses port 8787 unless <code>PORT</code> is set.</p>
+
+    <form id="settings">
+      <label for="url">MCP URL</label>
+      <input id="url" value="http://127.0.0.1:8787/mcp">
+      <label for="key">Bearer key <span class="muted">leave empty while auth mode is open</span></label>
+      <input id="key" autocomplete="off">
+
+      <label for="region">Default region</label>
+      <select id="region">
+        <option>us-south</option>
+        <option>us-east</option>
+        <option>eu-de</option>
+        <option>eu-gb</option>
+        <option>eu-es</option>
+        <option>jp-tok</option>
+        <option>jp-osa</option>
+        <option>au-syd</option>
+        <option>ca-tor</option>
+        <option>br-sao</option>
+      </select>
+      <label for="ceKey">Code Engine API key <span class="muted">IBM Cloud key. Leave blank to keep the current one. Needs an admin user or an admin MCP API key.</span></label>
+      <input id="ceKey" type="password" autocomplete="off" placeholder="Leave blank to keep the current key">
+      <label class="choice"><input id="activity" type="checkbox"> Activity log <span class="muted">write each tool call to the activity file</span></label>
+      <label class="choice"><input id="audit" type="checkbox"> Audit trace <span class="muted">keep each tool call in the server trace</span></label>
+
+      <p>
+        <button type="button" id="read" class="quiet">Read settings</button>
+        <button type="submit">Save</button>
+      </p>
+    </form>
+
+    <p id="status">Not loaded.</p>
+    <h2>Call</h2>
+    <pre id="sent">Waiting.</pre>
+    <h2>Response</h2>
+    <pre id="raw">Waiting.</pre>
+  </main>
+  <footer>
+    <a href="https://github.com/markusvankempen/code-engine-mcp-server">code-engine-mcp-server</a>
+    · <a href="index.html">All clients</a>
+  </footer>
+  <script src="client.js"></script>
+  <script>
+    const form = document.getElementById("settings");
+    const status = document.getElementById("status");
+    document.getElementById("url").value = mcpUrlDefault();
+
+    function fill(payload) {
+      if (payload?.region) document.getElementById("region").value = payload.region;
+      document.getElementById("activity").checked = Boolean(payload?.activity_enabled);
+      document.getElementById("audit").checked = Boolean(payload?.audit_enabled);
+      const rate = payload?.rate_limit || {};
+      const rateText = rate.enabled ? `${rate.limit}/${rate.windowSeconds}s` : "off";
+      status.textContent = [
+        `Version ${payload?.version || "unknown"}.`,
+        `Region ${payload?.region || "unknown"}.`,
+        `IBM Cloud key ${payload?.ibmcloud_api_key_configured ? "is set" : "is not set"}.`,
+        `Auth mode ${payload?.auth_mode || "unknown"}.`,
+        `Rate limit ${rateText}.`,
+        `Audit ${payload?.audit_enabled ? "on" : "off"}.`,
+        `Page lock ${payload?.ui_auth_enabled ? "on" : "off"}.`,
+      ].join(" ");
+    }
+
+    document.getElementById("read").addEventListener("click", async () => {
+      status.textContent = "Reading…";
+      try {
+        fill(await callTool("get_settings", {}));
+      } catch (error) {
+        status.textContent = `${error.message} Serve this page from the desk or from localhost.`;
+      }
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      status.textContent = "Saving…";
+      try {
+        await callTool("server_settings", {
+          action: "update",
+          region: document.getElementById("region").value,
+          activity_enabled: document.getElementById("activity").checked,
+        });
+        const ceKey = document.getElementById("ceKey").value.trim();
+        if (ceKey) {
+          await callTool("server_settings", { action: "secrets", ibmcloud_api_key: ceKey });
+          document.getElementById("ceKey").value = "";
+        }
+        await callTool("server_access", {
+          action: "audit",
+          enabled: document.getElementById("audit").checked,
+        });
+        fill(await callTool("get_settings", {}));
+        status.textContent = `Saved. ${status.textContent}`;
+      } catch (error) {
+        status.textContent = error.message;
+      }
+    });
+  </script>
+</body>
+</html>

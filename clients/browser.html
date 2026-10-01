@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Browser client · Code Engine MCP</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="client.css">
+</head>
+<body>
+  <header>
+    <img src="icon.svg" alt="">
+    <div>
+      <h1>Browser</h1>
+      <p>Pick a published tool, then post <code>tools/call</code> to Streamable HTTP.</p>
+    </div>
+  </header>
+  <nav>
+    <a href="index.html">Clients</a>
+    <a href="cursor.html">Cursor</a>
+    <a href="vscode.html">VS Code</a>
+    <a href="claude.html">Claude</a>
+    <a href="windsurf.html">Windsurf</a>
+    <a href="cli.html">CLI</a>
+    <a href="browser.html" aria-current="page">Browser</a>
+    <a href="settings.html">Settings</a>
+  </nav>
+  <main>
+    <p>Open this page from <code>/clients/</code> on the desk, or serve the folder from localhost. IBM Cloud tools need <code>IBMCLOUD_API_KEY</code> on the server. Turn the activity log and the audit trace on, then list projects and, with <code>ce_app</code> action <code>list</code>, the deployed apps. A page on another site is refused until that server’s <code>CORS_ORIGINS</code> includes the page’s origin.</p>
+    <form id="logging">
+      <h2>Logging</h2>
+      <label class="choice"><input id="activity" type="checkbox"> Activity log <span class="muted">each call is written to the activity file</span></label>
+      <label class="choice"><input id="audit" type="checkbox"> Audit trace <span class="muted">each call is kept in the server trace</span></label>
+      <p>
+        <button type="button" id="readLog" class="quiet">Read</button>
+        <button type="submit">Apply</button>
+        <button type="button" id="showTrace" class="quiet">Show trace</button>
+      </p>
+      <p id="logStatus" class="muted">Not loaded.</p>
+      <div class="result" id="traceOut"><p class="muted">Show trace calls <code>server_log</code> action <code>trace</code> and lists the rows here, in this browser’s timezone.</p></div>
+    </form>
+    <form id="listen">
+      <h2>Events</h2>
+      <p class="muted">Open a session on the server URL below and wait for <code>notifications/mcp-ce/logs</code>. Send a line now calls <code>server_log</code> action <code>push</code>. That is delivered at once when Allow push_log is on.</p>
+      <label class="choice"><input type="radio" name="listenVia" value="streamableHttp" checked> Streamable HTTP <span class="muted">initialize, then GET /mcp</span></label>
+      <label class="choice"><input type="radio" name="listenVia" value="sse"> Legacy SSE <span class="muted">GET /sse</span></label>
+      <label for="listenLine">Line</label>
+      <input id="listenLine" value="browser test" autocomplete="off">
+      <p>
+        <button type="button" id="listenStart">Listen</button>
+        <button type="button" id="listenStop" class="quiet">Stop</button>
+        <button type="button" id="listenPush" class="quiet">Send a line now</button>
+      </p>
+      <p id="listenStatus" class="muted">Not listening.</p>
+      <div class="result" id="listenOut"><p class="muted">Lines appear here.</p></div>
+    </form>
+    <form id="access">
+      <h2>Users and API keys</h2>
+      <p class="muted">MCP callers for this server. These are not IBM Cloud users and not the IBM Cloud API key. Create, update, delete, and key issue need the admin scope. Fill Basic auth, paste an admin bearer key above, or sign in on <a href="/admin">Admin</a> in this same browser.</p>
+      <div class="row">
+        <div>
+          <label for="basicUser">Basic username</label>
+          <input id="basicUser" autocomplete="username" placeholder="admin">
+        </div>
+        <div>
+          <label for="basicPass">Basic password</label>
+          <input id="basicPass" type="password" autocomplete="current-password">
+        </div>
+      </div>
+      <h2>Users</h2>
+      <p><button type="button" id="listUsers" class="quiet">List users</button></p>
+      <div class="row">
+        <div>
+          <label for="newUser">Username</label>
+          <input id="newUser" autocomplete="off" placeholder="alice">
+        </div>
+        <div>
+          <label for="newPass">Password</label>
+          <input id="newPass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+        </div>
+      </div>
+      <p class="choice-row">
+        <label class="choice"><input type="checkbox" data-scope="create" value="read"> read</label>
+        <label class="choice"><input type="checkbox" data-scope="create" value="write"> write</label>
+        <label class="choice"><input type="checkbox" data-scope="create" value="admin"> admin</label>
+      </p>
+      <p><button type="button" id="createUser">Create user</button></p>
+      <div class="row">
+        <div>
+          <label for="updUser">Username</label>
+          <input id="updUser" autocomplete="off" placeholder="Use Edit on a listed user">
+        </div>
+        <div>
+          <label for="updPass">New password <span class="muted">blank keeps the current one</span></label>
+          <input id="updPass" type="password" autocomplete="new-password">
+        </div>
+      </div>
+      <p class="choice-row">
+        <label class="choice"><input type="checkbox" data-scope="update" value="read"> read</label>
+        <label class="choice"><input type="checkbox" data-scope="update" value="write"> write</label>
+        <label class="choice"><input type="checkbox" data-scope="update" value="admin"> admin</label>
+      </p>
+      <p>
+        <button type="button" id="updateUser">Update user</button>
+        <button type="button" id="deleteUser" class="quiet">Delete user</button>
+      </p>
+      <h2>MCP API keys</h2>
+      <p><button type="button" id="listKeys" class="quiet">List keys</button></p>
+      <label for="keyLabel">Label</label>
+      <input id="keyLabel" placeholder="my laptop">
+      <p class="choice-row">
+        <label class="choice"><input type="checkbox" data-scope="issue" value="read" checked> read</label>
+        <label class="choice"><input type="checkbox" data-scope="issue" value="write"> write</label>
+        <label class="choice"><input type="checkbox" data-scope="issue" value="admin"> admin</label>
+      </p>
+      <p><button type="button" id="issueKey">Create key</button></p>
+      <label for="revokeId">Key id to revoke</label>
+      <input id="revokeId" autocomplete="off">
+      <p><button type="button" id="revokeKey" class="quiet">Revoke key</button></p>
+      <div id="issued" class="secret" hidden></div>
+      <div class="result" id="accessOut"><p class="muted">List users or keys. The secret from Create key stays in the green box.</p></div>
+    </form>
+    <form id="ask">
+      <label for="url">MCP URL</label>
+      <input id="url" name="url" value="http://127.0.0.1:8787/mcp">
+      <label for="key">Bearer key <span class="muted">leave empty while auth mode is open</span></label>
+      <input id="key" autocomplete="off">
+      <label for="tool">Tool</label>
+      <select id="tool"><option value="">Loading tools…</option></select>
+      <p class="muted" id="toolHelp"></p>
+      <div id="actionRow" hidden>
+        <label for="action">Action</label>
+        <select id="action"></select>
+        <p class="muted" id="actionHelp"></p>
+      </div>
+      <div id="fields"></div>
+      <p><button type="submit" id="go">Call tool</button></p>
+    </form>
+
+    <h2>Result</h2>
+    <div class="result" id="line"><p class="muted">The rows appear here.</p></div>
+
+    <h2>Request</h2>
+    <pre id="sent">Waiting.</pre>
+    <h2>Response</h2>
+    <pre id="raw">Waiting.</pre>
+  </main>
+  <footer>
+    <a href="https://github.com/markusvankempen/code-engine-mcp-server">code-engine-mcp-server</a>
+    · <a href="index.html">All clients</a>
+  </footer>
+  <script src="client.js"></script>
+  <script>
+    const form = document.getElementById("ask");
+    const line = document.getElementById("line");
+    const toolSelect = document.getElementById("tool");
+    const actionRow = document.getElementById("actionRow");
+    const actionSelect = document.getElementById("action");
+    const fields = document.getElementById("fields");
+    document.getElementById("url").value = mcpUrlDefault();
+
+    let catalog = [];
+    let projects = [];
+
+    function note(text) {
+      line.replaceChildren();
+      const p = document.createElement("p");
+      p.className = "muted";
+      p.textContent = text;
+      line.append(p);
+    }
+
+    function currentTool() {
+      return catalog.find((tool) => tool.name === toolSelect.value);
+    }
+
+    function actionNames(tool) {
+      const action = tool?.inputSchema?.properties?.action;
+      return Array.isArray(action?.enum) ? action.enum : [];
+    }
+
+    function fillSelect(select, values, selected) {
+      select.replaceChildren();
+      for (const value of values) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        if (value === selected) option.selected = true;
+        select.append(option);
+      }
+    }
+
+    function fieldInput(name, prop) {
+      if (Array.isArray(prop?.enum)) {
+        const select = document.createElement("select");
+        select.dataset.field = name;
+        select.dataset.type = "string";
+        const blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = "—";
+        select.append(blank);
+        for (const value of prop.enum) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = value;
+          select.append(option);
+        }
+        return select;
+      }
+      if (prop?.type === "boolean") {
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.dataset.field = name;
+        input.dataset.type = "boolean";
+        return input;
+      }
+      if (prop?.type === "object" || prop?.type === "array") {
+        const input = document.createElement("textarea");
+        input.dataset.field = name;
+        input.dataset.type = prop.type;
+        input.placeholder = prop.type === "array" ? "[]" : "{}";
+        return input;
+      }
+      const input = document.createElement("input");
+      input.dataset.field = name;
+      input.dataset.type = prop?.type === "number" || prop?.type === "integer" ? "number" : "string";
+      if (input.dataset.type === "number") input.type = "number";
+      if (prop?.description) input.placeholder = prop.description;
+      return input;
+    }
+
+    function projectPicker(input) {
+      const pick = document.createElement("select");
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = projects.length ? "Choose a project" : "Load projects to fill this";
+      pick.append(blank);
+      for (const project of projects) {
+        const option = document.createElement("option");
+        option.value = project.id;
+        option.textContent = [project.name, project.region].filter(Boolean).join(" · ");
+        if (input.value === project.id) option.selected = true;
+        pick.append(option);
+      }
+      pick.addEventListener("change", () => { input.value = pick.value; });
+      const load = document.createElement("button");
+      load.type = "button";
+      load.className = "quiet";
+      load.textContent = projects.length ? "Reload projects" : "Load projects";
+      load.addEventListener("click", () => loadProjects(input, pick, load));
+      const row = document.createElement("div");
+      row.className = "row";
+      const second = document.createElement("div");
+      second.append(pick, load);
+      row.append(input, second);
+      return row;
+    }
+
+    async function loadProjects(input, pick, load) {
+      load.disabled = true;
+      load.textContent = "Loading…";
+      try {
+        const payload = await callTool("ce_project", { action: "list" });
+        projects = Array.isArray(payload?.projects) ? payload.projects : [];
+        await renderFields();
+        const box = fields.querySelector("[data-field=project_id]");
+        if (box && input.value) box.value = input.value;
+      } catch (error) {
+        note(error.message);
+        load.disabled = false;
+        load.textContent = "Load projects";
+      }
+    }
+
+    async function renderFields() {
+      const tool = currentTool();
+      fields.replaceChildren();
+      document.getElementById("toolHelp").textContent = tool?.description || "";
+      const names = actionNames(tool);
+      actionRow.hidden = names.length === 0;
+      if (!tool) return;
+      if (names.length) fillSelect(actionSelect, names, actionSelect.value || (names.includes("list") ? "list" : names[0]));
+
+      let required = tool.inputSchema?.required || [];
+      let optional = Object.keys(tool.inputSchema?.properties || {}).filter((name) => !required.includes(name) && name !== "action");
+      let help = "";
+      if (names.length) {
+        try {
+          const schema = await mcpRpc("tools/call", { name: "get_schema", arguments: { name: tool.name } }, true);
+          const actions = payloadOf(schema)?.actions || {};
+          const spec = actions[actionSelect.value];
+          if (spec) {
+            required = spec.required || [];
+            optional = spec.optional || [];
+            help = spec.summary || "";
+          }
+        } catch (error) {
+          help = error.message;
+        }
+      }
+      document.getElementById("actionHelp").textContent = help;
+      const props = tool.inputSchema?.properties || {};
+      const optionalBox = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "Optional fields";
+      optionalBox.append(summary);
+      let optionalCount = 0;
+      for (const [name, needed] of [...required.map((name) => [name, true]), ...optional.map((name) => [name, false])]) {
+        if (name === "action") continue;
+        const label = document.createElement("label");
+        label.htmlFor = `field-${name}`;
+        label.append(document.createTextNode(name));
+        const input = fieldInput(name, props[name]);
+        input.id = `field-${name}`;
+        const target = needed ? fields : optionalBox;
+        if (props[name]?.type === "boolean") {
+          label.className = "choice";
+          label.append(input);
+          target.append(label);
+        } else {
+          target.append(label);
+          if (name === "project_id" && input.tagName === "INPUT") target.append(projectPicker(input));
+          else target.append(input);
+        }
+        if (!needed) optionalCount += 1;
+      }
+      if (optionalCount) fields.append(optionalBox);
+    }
+
+    function argumentValue(input) {
+      if (input.dataset.type === "boolean") return input.checked ? true : undefined;
+      const text = input.value.trim();
+      if (!text) return undefined;
+      if (input.dataset.type === "number") return Number(text);
+      if (input.dataset.type === "object" || input.dataset.type === "array") return JSON.parse(text);
+      return text;
+    }
+
+    function argumentsFromForm() {
+      const args = {};
+      if (!actionRow.hidden) args.action = actionSelect.value;
+      for (const input of fields.querySelectorAll("[data-field]")) {
+        try {
+          const value = argumentValue(input);
+          if (value !== undefined) args[input.dataset.field] = value;
+        } catch {
+          throw new Error(`${input.dataset.field} must be JSON.`);
+        }
+      }
+      return args;
+    }
+
+    function showResult(payload) {
+      line.replaceChildren();
+      const arrays = Object.entries(payload || {}).filter(([, value]) => Array.isArray(value));
+      if (!arrays.length) {
+        const pre = document.createElement("pre");
+        pre.textContent = JSON.stringify(payload, null, 2);
+        line.append(pre);
+        return;
+      }
+      for (const [key, rows] of arrays) {
+        const heading = document.createElement("p");
+        heading.className = "muted";
+        heading.textContent = `${key}: ${rows.length}`;
+        line.append(heading);
+        if (!rows.length) continue;
+        for (const row of rows) {
+          if (!row || typeof row !== "object") {
+            const p = document.createElement("p");
+            p.textContent = String(row);
+            line.append(p);
+            continue;
+          }
+          const title = document.createElement("p");
+          title.className = "line";
+          const label = row.name || row.id || row.subject || key;
+          const endpoint = typeof row.endpoint === "string" && /^https?:\/\//.test(row.endpoint) ? row.endpoint : "";
+          if (endpoint) {
+            const open = document.createElement("a");
+            open.href = endpoint;
+            open.target = "_blank";
+            open.rel = "noopener noreferrer";
+            open.textContent = label;
+            title.append(open);
+          } else {
+            title.textContent = label;
+          }
+          const meta = document.createElement("p");
+          meta.className = "muted";
+          const bits = [row.region, row.status, row.id && row.id !== label ? row.id : "", formatLocalTime(row.ts || row.timestamp || "")].filter(Boolean);
+          meta.textContent = bits.join(" · ");
+          if (endpoint) {
+            if (bits.length) meta.append(document.createTextNode(" · "));
+            const url = document.createElement("a");
+            url.href = endpoint;
+            url.target = "_blank";
+            url.rel = "noopener noreferrer";
+            url.textContent = endpoint;
+            meta.append(url);
+          }
+          line.append(title, meta);
+        }
+      }
+    }
+
+    toolSelect.addEventListener("change", () => { actionSelect.value = ""; renderFields(); });
+    actionSelect.addEventListener("change", renderFields);
+    document.getElementById("url").addEventListener("change", loadTools);
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!toolSelect.value) return;
+      note("Calling…");
+      try {
+        showResult(await callTool(toolSelect.value, argumentsFromForm()));
+      } catch (error) {
+        note(error.message);
+      }
+    });
+
+    async function loadTools() {
+      toolSelect.replaceChildren();
+      const waiting = document.createElement("option");
+      waiting.textContent = "Loading tools…";
+      toolSelect.append(waiting);
+      try {
+        const message = await mcpRpc("tools/list", {}, true);
+        catalog = message.result?.tools || [];
+        const names = catalog.map((tool) => tool.name);
+        fillSelect(toolSelect, names, names.includes("ce_app") ? "ce_app" : names[0]);
+        await renderFields();
+        note("Pick a tool and call it. ce_app with action list needs a project id.");
+      } catch (error) {
+        toolSelect.replaceChildren();
+        const failed = document.createElement("option");
+        failed.textContent = "Could not load tools";
+        toolSelect.append(failed);
+        note(`${error.message} Serve this page from the desk or from localhost.`);
+      }
+    }
+
+    const logStatus = document.getElementById("logStatus");
+
+    function fillLogging(payload) {
+      document.getElementById("activity").checked = Boolean(payload?.activity_enabled);
+      document.getElementById("audit").checked = Boolean(payload?.audit_enabled);
+      logStatus.textContent = `Activity log ${payload?.activity_enabled ? "on" : "off"}. Audit trace ${payload?.audit_enabled ? "on" : "off"}.`;
+    }
+
+    async function readLogging() {
+      logStatus.textContent = "Reading…";
+      try {
+        fillLogging(await mcpRpc("tools/call", { name: "get_settings", arguments: {} }, true).then(payloadOf));
+      } catch (error) {
+        logStatus.textContent = error.message;
+      }
+    }
+
+    document.getElementById("logging").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      logStatus.textContent = "Saving…";
+      try {
+        await callTool("server_settings", {
+          action: "update",
+          activity_enabled: document.getElementById("activity").checked,
+        });
+        await callTool("server_access", {
+          action: "audit",
+          enabled: document.getElementById("audit").checked,
+        });
+        await readLogging();
+        logStatus.textContent = `Saved. ${logStatus.textContent} List projects, then ce_app action list.`;
+      } catch (error) {
+        logStatus.textContent = error.message;
+      }
+    });
+
+    document.getElementById("readLog").addEventListener("click", readLogging);
+
+    document.getElementById("showTrace").addEventListener("click", async () => {
+      const out = document.getElementById("traceOut");
+      out.replaceChildren();
+      const waiting = document.createElement("p");
+      waiting.className = "muted";
+      waiting.textContent = "Reading trace…";
+      out.append(waiting);
+      try {
+        const payload = await callTool("server_log", { action: "trace" });
+        const trace = Array.isArray(payload?.trace) ? payload.trace : [];
+        out.replaceChildren();
+        const heading = document.createElement("p");
+        heading.className = "muted";
+        heading.textContent = payload?.audit_enabled
+          ? `Audit trace on. ${trace.length} recent call${trace.length === 1 ? "" : "s"}.`
+          : "Audit trace is off. Check Audit trace, click Apply, call a tool, then show the trace again.";
+        out.append(heading);
+        for (const row of trace.slice(-12)) {
+          const title = document.createElement("p");
+          title.className = "line";
+          title.textContent = row.tool || "call";
+          const meta = document.createElement("p");
+          meta.className = "muted";
+          const when = formatLocalTime(row.ts);
+          meta.textContent = [row.ok ? "ok" : "error", row.transport, when].filter(Boolean).join(" · ");
+          if (row.ts) meta.title = row.ts;
+          out.append(title, meta);
+        }
+      } catch (error) {
+        out.replaceChildren();
+        const err = document.createElement("p");
+        err.textContent = error.message;
+        out.append(err);
+      }
+    });
+
+    const accessOut = document.getElementById("accessOut");
+    const issuedBox = document.getElementById("issued");
+
+    function scopesOf(group) {
+      return [...document.querySelectorAll(`input[data-scope="${group}"]:checked`)].map((el) => el.value);
+    }
+
+    function showAccess(payload) {
+      accessOut.replaceChildren();
+      if (payload?.secret) {
+        issuedBox.hidden = false;
+        issuedBox.replaceChildren();
+        const title = document.createElement("p");
+        title.textContent = "Copy this MCP API key now. It is not shown again.";
+        const code = document.createElement("code");
+        code.textContent = payload.secret;
+        const use = document.createElement("button");
+        use.type = "button";
+        use.className = "quiet";
+        use.textContent = "Use as bearer key";
+        use.addEventListener("click", () => {
+          document.getElementById("key").value = payload.secret;
+          document.getElementById("basicUser").value = "";
+          document.getElementById("basicPass").value = "";
+        });
+        issuedBox.append(title, code, document.createElement("br"), use);
+      }
+      const users = Array.isArray(payload?.users) ? payload.users : null;
+      const keys = Array.isArray(payload?.keys) ? payload.keys : null;
+      const rows = users || keys;
+      if (!rows) {
+        const p = document.createElement("p");
+        const scopes = Array.isArray(payload?.scopes) ? payload.scopes.join(", ") : "";
+        p.textContent = payload?.username
+          ? [payload.username, scopes].filter(Boolean).join(" · ")
+          : [payload?.id, payload?.active === false ? "revoked" : "", scopes].filter(Boolean).join(" · ");
+        accessOut.append(p);
+        return;
+      }
+      const heading = document.createElement("p");
+      heading.className = "muted";
+      heading.textContent = `${users ? "users" : "keys"}: ${rows.length}`;
+      accessOut.append(heading);
+      for (const row of rows) {
+        const title = document.createElement("p");
+        title.className = "line";
+        title.textContent = row.username || row.label || row.prefix || row.id || "row";
+        const meta = document.createElement("p");
+        meta.className = "muted";
+        const scopes = Array.isArray(row.scopes) ? row.scopes.join(", ") : "";
+        meta.textContent = [
+          scopes,
+          row.builtIn ? "built-in" : "",
+          row.prefix,
+          row.active === false ? "revoked" : row.active ? "active" : "",
+          row.id,
+        ].filter(Boolean).join(" · ");
+        accessOut.append(title, meta);
+        if (users && row.username) {
+          const edit = document.createElement("button");
+          edit.type = "button";
+          edit.className = "quiet";
+          edit.textContent = "Edit";
+          edit.addEventListener("click", () => fillUserEditor(row));
+          accessOut.append(edit);
+        }
+      }
+    }
+
+    function fillUserEditor(row) {
+      document.getElementById("updUser").value = row.username || "";
+      document.getElementById("updPass").value = "";
+      const scopes = Array.isArray(row.scopes) ? row.scopes : [];
+      for (const box of document.querySelectorAll('input[data-scope="update"]')) {
+        box.checked = scopes.includes(box.value);
+      }
+      document.getElementById("updUser").focus();
+      if (row.builtIn) {
+        const note = document.createElement("p");
+        note.className = "muted";
+        note.textContent = "The built-in admin password is changed on the Admin page, under Overview.";
+        accessOut.prepend(note);
+      }
+    }
+
+    async function callAccess(name, args) {
+      const shown = { ...args };
+      if (shown.password) shown.password = "***";
+      document.getElementById("sent").textContent = JSON.stringify({ tool: name, arguments: shown }, null, 2);
+      const message = await mcpRpc("tools/call", { name, arguments: args }, true);
+      document.getElementById("raw").textContent = JSON.stringify(message, null, 2);
+      return payloadOf(message);
+    }
+
+    async function runAccess(label, fn) {
+      accessOut.replaceChildren();
+      const waiting = document.createElement("p");
+      waiting.className = "muted";
+      waiting.textContent = label;
+      accessOut.append(waiting);
+      try {
+        showAccess(await fn());
+      } catch (error) {
+        accessOut.replaceChildren();
+        const err = document.createElement("p");
+        err.textContent = error.message;
+        accessOut.append(err);
+      }
+    }
+
+    document.getElementById("access").addEventListener("submit", (event) => event.preventDefault());
+    document.getElementById("listUsers").addEventListener("click", () => {
+      runAccess("Listing users…", () => callAccess("server_users", { action: "list" }));
+    });
+    document.getElementById("createUser").addEventListener("click", () => {
+      runAccess("Creating…", () => callAccess("server_users", {
+        action: "create",
+        username: document.getElementById("newUser").value.trim(),
+        password: document.getElementById("newPass").value,
+        scopes: scopesOf("create"),
+      }));
+    });
+    document.getElementById("updateUser").addEventListener("click", () => {
+      const args = { action: "update", username: document.getElementById("updUser").value.trim() };
+      const password = document.getElementById("updPass").value;
+      const scopes = scopesOf("update");
+      if (password) args.password = password;
+      if (scopes.length) args.scopes = scopes;
+      runAccess("Updating…", () => callAccess("server_users", args));
+    });
+    document.getElementById("deleteUser").addEventListener("click", async () => {
+      const username = document.getElementById("updUser").value.trim();
+      if (!username) {
+        runAccess("Deleting…", async () => { throw new Error("Enter the username to delete."); });
+        return;
+      }
+      // A VS Code webview cannot show window.confirm; the extension provides ceConfirm instead.
+      const message = `Delete user ${username}?`;
+      if (!(await (window.ceConfirm ? window.ceConfirm(message) : window.confirm(message)))) return;
+      runAccess("Deleting…", () => callAccess("server_users", { action: "delete", username }));
+    });
+    document.getElementById("listKeys").addEventListener("click", () => {
+      runAccess("Listing keys…", () => callAccess("server_api_keys", { action: "list" }));
+    });
+    document.getElementById("issueKey").addEventListener("click", () => {
+      runAccess("Creating key…", () => callAccess("server_api_keys", {
+        action: "issue",
+        label: document.getElementById("keyLabel").value.trim(),
+        scopes: scopesOf("issue"),
+      }));
+    });
+    document.getElementById("revokeKey").addEventListener("click", () => {
+      runAccess("Revoking…", () => callAccess("server_api_keys", {
+        action: "revoke",
+        id: document.getElementById("revokeId").value.trim(),
+      }));
+    });
+
+    let listenControl = null;
+
+    function listenStatus(text) {
+      document.getElementById("listenStatus").textContent = text;
+    }
+
+    function authHeaders(extra) {
+      const headers = { ...extra };
+      const authorization = authorizationHeader();
+      if (authorization) headers.Authorization = authorization;
+      return headers;
+    }
+
+    function showLog(payload) {
+      const box = document.getElementById("listenOut");
+      const waiting = box.querySelector(".muted");
+      if (waiting) waiting.remove();
+      const title = document.createElement("p");
+      title.className = "line";
+      const when = payload?.ts ? formatLocalTime(payload.ts) : "";
+      title.textContent = [when, payload?.kind || "event", payload?.line || payload?.tool || ""].filter(Boolean).join(" · ");
+      const pre = document.createElement("pre");
+      pre.textContent = JSON.stringify(payload, null, 2);
+      box.prepend(pre);
+      box.prepend(title);
+    }
+
+    async function readSse(body, onEvent) {
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const chunks = buf.split("\n\n");
+        buf = chunks.pop() || "";
+        for (const chunk of chunks) {
+          let eventName = "message";
+          const data = [];
+          for (const line of chunk.split("\n")) {
+            if (line.startsWith("event:")) eventName = line.slice(6).trim();
+            else if (line.startsWith("data:")) data.push(line.slice(5).trim());
+          }
+          const text = data.join("\n");
+          if (text) onEvent(eventName, text);
+        }
+      }
+    }
+
+    function onMcpEvent(text) {
+      let message;
+      try { message = JSON.parse(text); } catch { return; }
+      if (message.method === "notifications/mcp-ce/logs") showLog(message.params || {});
+    }
+
+    async function stopListen() {
+      const current = listenControl;
+      listenControl = null;
+      if (!current) return;
+      current.controller.abort();
+      if (current.kind === "streamableHttp" && current.sessionId) {
+        try {
+          await fetch(current.mcpUrl, {
+            method: "DELETE",
+            headers: authHeaders({
+              Accept: "application/json, text/event-stream",
+              "mcp-session-id": current.sessionId,
+            }),
+          });
+        } catch { /* the session is already gone */ }
+      }
+      listenStatus("Stopped.");
+    }
+
+    async function startListen() {
+      await stopListen();
+      const via = document.querySelector("input[name='listenVia']:checked")?.value || "streamableHttp";
+      const mcpUrl = new URL(document.getElementById("url").value.trim());
+      const controller = new AbortController();
+      listenControl = { controller, kind: via, mcpUrl: mcpUrl.toString(), sessionId: "" };
+      document.getElementById("listenOut").replaceChildren();
+      const waiting = document.createElement("p");
+      waiting.className = "muted";
+      waiting.textContent = "Connecting…";
+      document.getElementById("listenOut").append(waiting);
+      try {
+        if (via === "sse") {
+          listenStatus("Opening legacy SSE…");
+          const response = await fetch(`${mcpUrl.origin}/sse`, {
+            headers: authHeaders({ Accept: "text/event-stream" }),
+            signal: controller.signal,
+          });
+          if (!response.ok || !(response.headers.get("content-type") || "").includes("text/event-stream")) {
+            throw new Error((await response.text()).slice(0, 400));
+          }
+          listenStatus("Listening on legacy SSE.");
+          await readSse(response.body, (eventName, text) => {
+            if (eventName === "endpoint") {
+              const sid = new URL(text, mcpUrl.origin).searchParams.get("sessionId") || "";
+              if (listenControl) listenControl.sessionId = sid;
+              listenStatus(`Listening on legacy SSE${sid ? ` (${sid.slice(0, 8)})` : ""}.`);
+              return;
+            }
+            onMcpEvent(text);
+          });
+          if (listenControl) listenStatus("Legacy SSE closed.");
+          return;
+        }
+        listenStatus("Opening Streamable HTTP…");
+        const init = await fetch(mcpUrl.toString(), {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            Accept: "application/json, text/event-stream",
+          }),
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "initialize",
+            params: {
+              protocolVersion: "2025-03-26",
+              capabilities: {},
+              clientInfo: { name: "code-engine-browser", version: "1" },
+            },
+          }),
+          signal: controller.signal,
+        });
+        const sessionId = init.headers.get("mcp-session-id") || "";
+        const initBody = await init.text();
+        if (!init.ok || !sessionId) throw new Error(initBody.slice(0, 400) || `HTTP ${init.status}`);
+        if (listenControl) listenControl.sessionId = sessionId;
+        const ack = await fetch(mcpUrl.toString(), {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            Accept: "application/json, text/event-stream",
+            "mcp-session-id": sessionId,
+          }),
+          body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+          signal: controller.signal,
+        });
+        await ack.text();
+        if (!ack.ok && ack.status !== 202) throw new Error(`initialized HTTP ${ack.status}`);
+        const stream = await fetch(mcpUrl.toString(), {
+          headers: authHeaders({
+            Accept: "text/event-stream",
+            "mcp-session-id": sessionId,
+          }),
+          signal: controller.signal,
+        });
+        if (!stream.ok || !(stream.headers.get("content-type") || "").includes("text/event-stream")) {
+          throw new Error((await stream.text()).slice(0, 400) || `HTTP ${stream.status}`);
+        }
+        listenStatus(`Listening on Streamable HTTP (${sessionId.slice(0, 8)}).`);
+        await readSse(stream.body, (_eventName, text) => onMcpEvent(text));
+        if (listenControl) listenStatus("Streamable HTTP stream closed.");
+      } catch (error) {
+        if (error.name === "AbortError") return;
+        listenStatus(error.message || "Listen failed.");
+      }
+    }
+
+    document.getElementById("listen").addEventListener("submit", (event) => event.preventDefault());
+    document.getElementById("listenStart").addEventListener("click", () => { startListen(); });
+    document.getElementById("listenStop").addEventListener("click", () => { stopListen(); });
+    document.getElementById("listenPush").addEventListener("click", async () => {
+      const line = document.getElementById("listenLine").value.trim();
+      try {
+        const payload = await mcpRpc("tools/call", { name: "server_log", arguments: { action: "push", line } }, true);
+        const body = payloadOf(payload);
+        if (body && body.ok === false) throw new Error(body.error || "push failed");
+        listenStatus(body?.mqtt_error ? `Sent a line. MQTT: ${body.mqtt_error}` : "Sent a line.");
+      } catch (error) {
+        listenStatus(error.message || "Could not send a line.");
+      }
+    });
+
+    loadTools().then(readLogging);
+  </script>
+</body>
+</html>

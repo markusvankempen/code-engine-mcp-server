@@ -640,6 +640,7 @@ The same pattern works for any `npx`-runnable MCP server — just swap the `--st
 - [MCP Inspector Troubleshooting](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/MCP_INSPECTOR_TROUBLESHOOTING.md)
 - [VS Code MCP extension](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/vscode-extension/README.md) — Activity Dashboard, Receipt Visualizer, setup & diagnostics
 - [IBM Code Engine API (IBM Cloud)](https://cloud.ibm.com/apidocs/codeengine/v2)
+- [Client examples](clients/README.md) — Cursor, VS Code, Claude, Windsurf, the `mcp>` CLI, and a browser page
 - [Client README](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/CLIENT_README.md)
 - [Cline MCP Config Example](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/CLINE_CONFIG_EXAMPLE.json)
 - [Code of Conduct](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/CODE_OF_CONDUCT.md)

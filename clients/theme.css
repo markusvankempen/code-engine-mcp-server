@@ -1,0 +1,143 @@
+/* Shared color themes for the dashboard and the client pages.
+   The selected name is stored as ce-mcp-theme in this browser. */
+
+:root,
+html[data-theme="grove"] {
+  color-scheme: light;
+  --ink: #10252a;
+  --muted: #557176;
+  --paper: #f3f7f1;
+  --cream: #fbfcf8;
+  --green: #0d7a63;
+  --green-dark: #075346;
+  --accent: #0d7a63;
+  --lime: #c7e86b;
+  --coral: #f07f61;
+  --line: #cddbd3;
+  --amber: #e8990a;
+  --header: rgba(251, 252, 248, .96);
+  --hover: #eef7ed;
+  --pre-bg: #075346;
+  --pre-fg: #e8f5e9;
+  --th-fg: #c8e6c9;
+  --ok-bg: #d4edda;
+  --ok-fg: #075346;
+  --warn-bg: #fef3cd;
+  --warn-fg: #7a5000;
+  --err-bg: #fde8e0;
+  --err-fg: #c0392b;
+  --badge-green-bg: #d4edda;
+  --badge-coral-bg: #fde8e0;
+  --badge-amber-bg: #fef3cd;
+  --badge-grey-bg: #e5eded;
+  --detail-bg: #10252a;
+  --detail-fg: #e8f5e9;
+  --secret-bg: #e7f6ef;
+  --on-accent: #ffffff;
+  --overlay: rgba(16, 37, 42, .5);
+}
+
+html[data-theme="harbor"] {
+  color-scheme: light;
+  --ink: #102033;
+  --muted: #4d6478;
+  --paper: #f2f6fb;
+  --cream: #fbfcfe;
+  --green: #0b5cab;
+  --green-dark: #08407a;
+  --accent: #0b5cab;
+  --lime: #c9e4ff;
+  --coral: #d85a4a;
+  --line: #d3deea;
+  --amber: #c4840a;
+  --header: rgba(251, 252, 254, .96);
+  --hover: #e8f1fb;
+  --pre-bg: #08407a;
+  --pre-fg: #e7f1ff;
+  --th-fg: #d5e6ff;
+  --ok-bg: #d6e8f8;
+  --ok-fg: #08407a;
+  --warn-bg: #fef3cd;
+  --warn-fg: #7a5000;
+  --err-bg: #fde8e4;
+  --err-fg: #a33b2b;
+  --badge-green-bg: #d6e8f8;
+  --badge-coral-bg: #fde8e4;
+  --badge-amber-bg: #fef3cd;
+  --badge-grey-bg: #e4ebf2;
+  --detail-bg: #102033;
+  --detail-fg: #e7f1ff;
+  --secret-bg: #e5f1fb;
+  --on-accent: #ffffff;
+  --overlay: rgba(16, 32, 51, .5);
+}
+
+html[data-theme="ember"] {
+  color-scheme: light;
+  --ink: #2a1810;
+  --muted: #7a5c48;
+  --paper: #fbf6f1;
+  --cream: #fffdfb;
+  --green: #b64b2a;
+  --green-dark: #7d3018;
+  --accent: #b64b2a;
+  --lime: #f3d2a4;
+  --coral: #c0392b;
+  --line: #ead9cc;
+  --amber: #c47b12;
+  --header: rgba(255, 253, 251, .96);
+  --hover: #f8efe6;
+  --pre-bg: #7d3018;
+  --pre-fg: #fff1e6;
+  --th-fg: #ffe4d2;
+  --ok-bg: #f6e4d4;
+  --ok-fg: #7d3018;
+  --warn-bg: #fef3cd;
+  --warn-fg: #7a5000;
+  --err-bg: #fde8e0;
+  --err-fg: #9a2c1a;
+  --badge-green-bg: #f6e4d4;
+  --badge-coral-bg: #fde8e0;
+  --badge-amber-bg: #fef3cd;
+  --badge-grey-bg: #efe4da;
+  --detail-bg: #2a1810;
+  --detail-fg: #fff1e6;
+  --secret-bg: #f8efe6;
+  --on-accent: #ffffff;
+  --overlay: rgba(42, 24, 16, .5);
+}
+
+html[data-theme="night"] {
+  color-scheme: dark;
+  --ink: #e7f0ea;
+  --muted: #8aa39a;
+  --paper: #101816;
+  --cream: #18211e;
+  --green: #3dbe98;
+  --green-dark: #178a68;
+  --accent: #3dbe98;
+  --lime: #b7e8d4;
+  --coral: #f0927a;
+  --line: #2c3b36;
+  --amber: #e8b15a;
+  --header: rgba(16, 24, 22, .94);
+  --hover: #22302b;
+  --pre-bg: #0c1210;
+  --pre-fg: #d7f5e8;
+  --th-fg: #b7e0d0;
+  --ok-bg: #16382c;
+  --ok-fg: #b7e8d4;
+  --warn-bg: #3a3014;
+  --warn-fg: #f3d48a;
+  --err-bg: #3a221c;
+  --err-fg: #f5b2a2;
+  --badge-green-bg: #16382c;
+  --badge-coral-bg: #3a221c;
+  --badge-amber-bg: #3a3014;
+  --badge-grey-bg: #24302c;
+  --detail-bg: #0c1210;
+  --detail-fg: #d7f5e8;
+  --secret-bg: #16382c;
+  --on-accent: #06241a;
+  --overlay: rgba(0, 0, 0, .55);
+}

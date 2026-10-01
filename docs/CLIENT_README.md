@@ -96,7 +96,7 @@ Output: Lists all Code Engine projects
 
 ### Interactive Mode
 
-
+The same prompt is also on the [CLI client page](../clients/cli.html).
 
 Run without arguments for interactive mode:
 ```bash

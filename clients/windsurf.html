@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Windsurf · Code Engine MCP</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <script src="theme.js"></script>
+  <link rel="stylesheet" href="client.css">
+</head>
+<body>
+  <header>
+    <img src="icon.svg" alt="">
+    <div>
+      <h1>Windsurf</h1>
+      <p>One global file: <code>~/.codeium/windsurf/mcp_config.json</code>. There is no per-project file.</p>
+    </div>
+  </header>
+  <nav>
+    <a href="index.html">Clients</a>
+    <a href="cursor.html">Cursor</a>
+    <a href="vscode.html">VS Code</a>
+    <a href="claude.html">Claude</a>
+    <a href="windsurf.html" aria-current="page">Windsurf</a>
+    <a href="cli.html">CLI</a>
+    <a href="browser.html">Browser</a>
+    <a href="settings.html">Settings</a>
+  </nav>
+  <main>
+    <p>Save the file and reload Windsurf. A remote server uses <code>serverUrl</code>. A field named <code>url</code> is ignored.</p>
+
+    <div class="codehead">
+      <p>Local npx</p>
+      <button type="button" data-copy="local">Copy</button>
+    </div>
+    <p class="muted">stdio. Windsurf does not document a working directory, so <code>npx</code> is the entry that does not depend on one.</p>
+    <pre id="local">{
+  "mcpServers": {
+    "code-engine": {
+      "command": "npx",
+      "args": ["-y", "code-engine-mcp-server@latest"],
+      "env": {
+        "IBMCLOUD_API_KEY": "your-ibm-cloud-api-key",
+        "IBMCLOUD_REGION": "us-south"
+      }
+    }
+  }
+}</pre>
+
+    <div class="codehead">
+      <p>Hosted server</p>
+      <button type="button" data-copy="hosted">Copy</button>
+    </div>
+    <p class="muted">Streamable HTTP. Replace the host with your app.</p>
+    <pre id="hosted">{
+  "mcpServers": {
+    "code-engine": {
+      "serverUrl": "https://your-app.namespace.region.codeengine.appdomain.cloud/mcp"
+    }
+  }
+}</pre>
+  </main>
+  <footer>
+    <a href="https://github.com/markusvankempen/code-engine-mcp-server">code-engine-mcp-server</a>
+    · <a href="index.html">All clients</a>
+  </footer>
+  <script src="client.js"></script>
+</body>
+</html>
