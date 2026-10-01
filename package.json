@@ -1,7 +1,7 @@
 {
   "name": "code-engine-mcp-server",
   "mcpName": "io.github.markusvankempen/code-engine-mcp-server",
-  "version": "1.4.2",
+  "version": "1.7.8",
   "description": "IBM Code Engine MCP Server - deploy containers to IBM Cloud Code Engine from Cursor, Copilot, Claude, and Cline using natural language",
   "repository": {
     "type": "git",

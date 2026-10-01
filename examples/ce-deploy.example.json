@@ -1,0 +1,20 @@
+{
+  "project_id": "<your-project-id>",
+  "region": "ca-tor",
+  "apps": [
+    {
+      "name": "my-web-app",
+      "image": "us.icr.io/my-namespace/my-web-app:latest",
+      "registry_secret": "icr-secret",
+      "image_port": 8080,
+      "cpu": "1",
+      "memory": "2G",
+      "min_scale": 0,
+      "max_scale": 10,
+      "env": {
+        "NODE_ENV": "production",
+        "LOG_LEVEL": "info"
+      }
+    }
+  ]
+}
