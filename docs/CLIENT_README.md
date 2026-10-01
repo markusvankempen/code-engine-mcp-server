@@ -23,7 +23,7 @@ The MCP server and client are already built and ready to use.
 ### 2. Run the Client
 
 ```bash
-cd code-engine-mcp-server
+# from the repo root, after npm run build
 ./run-client.sh <command> [args]
 ```
 
@@ -96,6 +96,8 @@ Output: Lists all Code Engine projects
 
 ### Interactive Mode
 
+
+
 Run without arguments for interactive mode:
 ```bash
 ./run-client.sh
@@ -149,7 +151,7 @@ IBMCLOUD_API_KEY=your-api-key-here
 
 ```
 ┌─────────────────┐
-│  MCP Client     │  (simple-client.ts)
+│  MCP Client     │  (src/simple-client.ts)
 │  (CLI)          │
 └────────┬────────┘
          │
@@ -162,15 +164,15 @@ IBMCLOUD_API_KEY=your-api-key-here
          │
          ├──► Docker/Podman CLI
          │
-         └──► IBM Cloud CLI
+         └──► IBM Cloud REST API
 ```
 
 ## How It Works
 
-1. **Client** (`simple-client.ts`) - Command-line interface
-2. **Server** (`index.ts`) - MCP server that executes commands
+1. **Client** (`src/simple-client.ts`) - Command-line interface
+2. **Server** (`src/index.ts`) - MCP server that executes commands
 3. **Communication** - Client spawns server as subprocess, communicates via stdio
-4. **Tools** - Server provides 8 Docker/Podman tools + 4 Code Engine tools
+4. **Tools** - This client exposes detect, images, containers, build, push, test, logs, stop, and projects. The server publishes the full tool list in the main README.
 
 ## Troubleshooting
 
@@ -182,7 +184,7 @@ If you see:
 ```
 
 Solution:
-1. Check `.env` file exists in parent directory
+1. Check `.env` exists in the repo root (same directory as `run-client.sh`)
 2. Verify it contains: `IBMCLOUD_API_KEY=your-key`
 3. Or run with explicit env var:
 ```bash
@@ -198,13 +200,9 @@ docker --version
 podman --version
 ```
 
-### IBM Cloud CLI Not Found
+### Code Engine calls fail
 
-For Code Engine commands, verify IBM Cloud CLI is installed:
-```bash
-ibmcloud --version
-ibmcloud plugin list  # Should show code-engine plugin
-```
+The server talks to the IBM Cloud REST API. The IBM Cloud CLI is not required. Confirm `IBMCLOUD_API_KEY` is set and, if you use a region other than `us-south`, set `IBMCLOUD_REGION` (including `eu-es`).
 
 ## Development
 
@@ -240,6 +238,9 @@ The MCP server provides these tools:
 8. `list_local_containers` - List containers
 
 ### Code Engine Tools (4)
+
+> These are the older single-purpose names. They still work, but the server now publishes 28 tools where one tool covers a resource, for example `ce_app` with `action` `list` or `get`. See the [tool reference](TOOLS.md).
+
 1. `ce_list_projects` - List projects
 2. `ce_create_application` - Create app
 3. `ce_list_applications` - List apps

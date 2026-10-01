@@ -10,7 +10,7 @@ Also: deploy to code engine, ibm ce mcp, ai deploy containers, copilot mcp serve
 
 **MCP server for IBM Code Engine — build, push, and deploy containers from Cursor, Copilot, Claude, and Cline using natural language.**
 
-> **Current release: v1.5.0** — Projects & Resources Tree View in the sidebar (apps, jobs, builds, secrets, config maps with inline actions), Activity sidebar view, plus 8 new operational tools (events, build-run logs, app restart, job resubmit/cancel, project quotas).
+> **Current release: v1.7.8** — **28 tools** instead of 112 (one tool per resource with an `action` field, same capability, old names still work), a **shared local HTTP server** for the VS Code extension, a **web admin UI** with a *Remote client* tab (test tools, logging, users and API keys, events), **MCP Remote Config** inside VS Code, and a check that the server you point at really is a code-engine MCP server. See [CHANGELOG.md](CHANGELOG.md) and the [tool reference](docs/TOOLS.md).
 
 **Search terms:** `code-engine-mcp` · `ibm-code-engine` · `ibm-cloud` · `ibm-container-registry` · `mcp-server` · `model-context-protocol` · `cursor` · `github-copilot` · `claude-desktop` · `cline` · `docker` · `podman` · `serverless` · `container-deployment` · `typescript` · `npx` · `ai-agents` · `devops` · `cloud-native` · `watsonx-orchestrate`
 
@@ -22,7 +22,7 @@ Also: deploy to code engine, ibm ce mcp, ai deploy containers, copilot mcp serve
 ---
 
 [![MCP](https://img.shields.io/badge/MCP-Server-blue)](https://github.com/markusvankempen/code-engine-mcp-server)
-[![Release](https://img.shields.io/badge/release-v1.5.0-blue)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/CHANGELOG.md#150---2026-07-04)
+[![Release](https://img.shields.io/badge/release-v1.7.8-blue)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/CHANGELOG.md)
 [![IBM Cloud](https://img.shields.io/badge/IBM%20Cloud-Code%20Engine-1261FE)](https://cloud.ibm.com/codeengine/overview)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=nodedotjs&logoColor=white)](#prerequisites)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/LICENSE)
@@ -62,13 +62,15 @@ flowchart TD
 
 ## ✨ What You Get
 
-- Container workflow tools for Docker or Podman
-- IBM Container Registry (ICR) tools — list namespaces, list images, delete images
-- IBM Code Engine project and application management tools
-- MCP-ready setup for GitHub Copilot, Cline, Bob, Claude Desktop, and the optional VS Code extension in `vscode-extension/`
-- **MCP Activity Dashboard** — live timeline of tool calls, session grouping, deploy outcome highlights, and a Deployments inventory tab (extension or dev repo)
+- **28 tools, one per resource.** `ce_app`, `ce_job`, `ce_secret`, … each take an `action` (`list`, `get`, `create`, `delete`, …). Every earlier capability is still there; see the [tool reference](docs/TOOLS.md).
+- Container workflow tools for Docker or Podman (`local_container`, `dockerfile`)
+- IBM Container Registry (`icr`) and the whole Code Engine surface: projects, apps, jobs, builds, secrets, config maps, domains, bindings, functions, fleets
+- Multi-step procedures: build, push and deploy in one call (`proc_build_push_deploy`), custom domains, declarative manifests
+- **One server, many clients.** Run it over stdio, or as an HTTP server that your IDE, assistants, the web UI and the VS Code extension all share
+- **Web admin UI** (`/admin`): overview, activity, users, API keys, runtime settings, and a *Remote client* tab that tests the tools and configures the server (logging, users and keys, events)
+- MCP-ready setup for GitHub Copilot, Cursor, Cline, Bob, Windsurf, Antigravity, Claude Desktop, and the VS Code extension in `vscode-extension/` (including *MCP Remote Config*)
+- **MCP Activity Dashboard** — live timeline of tool calls, session grouping, deploy outcome highlights, and a Deployments inventory tab
 - **Live activity logging** — optional JSONL event stream for every MCP tool call (`MCP_ACTIVITY_*` env vars)
-- A simple local development and troubleshooting workflow
 
 ## 🚀 Quick Start
 
@@ -95,7 +97,7 @@ Here is an example interaction from a real session:
 > "I have an app in the `developer-splash` folder. Deploy it to my Code Engine project."
 
 **Assistant's Autonomous Thought Process:**
-1. *Discovery:* "Let me check what projects and namespaces exist... Found project `markus-app-v2-toronto` and namespace `mvk-code-engine`."
+1. *Discovery:* "Let me check what projects and namespaces exist... Found project `my-project` and namespace `my-namespace`."
 2. *Prerequisites:* "No pull secret in this project yet. I'll get the API key from the `.env` file and create the secret `icr-pull-secret`."
 3. *Execution:* "Now I'll run the full pipeline: build → push → deploy → wait."
 4. *Validation:* "It's deployed but stuck at 'deploying'. Let me check the logs... The container is running but the readiness probe is failing."
@@ -103,7 +105,7 @@ Here is an example interaction from a real session:
 6. *Completion:* "App is live! 🎉 Status: ready."
 
 **Assistant Response to User:**
-> "Your app is deployed and live at: `https://developer-splash.29m5mrru3s3n.ca-tor.codeengine.appdomain.cloud`. I had to fix a minor port configuration issue in your Dockerfile, but it is successfully running now!"
+> "Your app is deployed and live at: `https://developer-splash.<subdomain>.<region>.codeengine.appdomain.cloud`. I had to fix a minor port configuration issue in your Dockerfile, but it is successfully running now!"
 
 With this MCP server, the AI acts as an expert DevOps engineer pairing with you.
 
@@ -120,18 +122,20 @@ flowchart LR
     D --> F[Deployments tab\ninventory + actions]
 ```
 
-### Enable activity logging
+### Activity logging (on by default)
 
-Add to your MCP client env (Cursor `.cursor/mcp.json`, VS Code `mcp.json`, etc.):
+Since v1.6.0 the server logs every tool start/finish to `~/.code-engine-mcp/activity/events.jsonl` — input summaries, pipeline sub-steps (`proc_build_push_deploy`), result highlights, and optional HTTP smoke-test labels. API keys, passwords, TLS keys, env var values, and secret payloads are redacted. The file rotates at 5 MB.
+
+Optional env in your MCP client config:
 
 ```json
-"MCP_ACTIVITY_ENABLED": "true",
-"MCP_ACTIVITY_EVENTS_PATH": "/absolute/path/to/code-engine-mcp-server/dashboard/activity/live/events.jsonl",
+"MCP_ACTIVITY_ENABLED": "false",
+"MCP_ACTIVITY_EVENTS_PATH": "/custom/path/events.jsonl",
 "MCP_ACTIVITY_SESSION_ID": "session:my-chat-001",
 "MCP_ACTIVITY_CHAT_LABEL": "Deploy Star Wars splash"
 ```
 
-Restart the MCP server after changing env. Events append to `events.jsonl` on every tool start/finish — including input summaries, pipeline sub-steps (`proc_build_push_deploy`), result highlights, and optional HTTP smoke-test labels.
+In the VS Code extension, turn logging off with `codeEngineMcp.activityEnabled`. Restart the MCP server after changing env.
 
 See [.env.example](.env.example) for all `MCP_ACTIVITY_*` variables.
 
@@ -276,7 +280,7 @@ This calls `ce_get_application` and returns the public URL once the app reaches 
 List the running instances of starwars-splash in project <project-id>
 ```
 
-This calls `ce_list_app_instances` (or `ce_get_app_instance` for a specific instance) and shows:
+This calls `ce_list_app_instances` (pass `instance_name` for one instance; `ce_get_app_instance` still works) and shows:
 - Instance name and revision
 - Container status (`running` / `pending` / `failed`)
 - Restart count
@@ -386,7 +390,7 @@ Use the `cname_target` value returned in 5c (it uses the `custom.` prefix, not t
 
 Once DNS propagates, `https://<your-domain>` serves the app with a valid TLS certificate.
 
-> **Certificate renewal:** Let's Encrypt certs expire after 90 days. Re-run certbot to get updated PEM files, then ask Copilot to run `ce_renew_tls_secret_from_pem` — it patches the existing secret in-place so your domain mapping continues working without any changes.
+> **Certificate renewal:** Let's Encrypt certs expire after 90 days. Re-run certbot to get updated PEM files, then ask Copilot to run `ce_create_tls_secret_from_pem` with `mode` `renew` — it patches the existing secret in-place so your domain mapping continues working without any changes. `ce_renew_tls_secret_from_pem` still works if called directly.
 
 ### Full one-shot prompt
 
@@ -401,19 +405,30 @@ Tell me the public URL and confirm the instance is running.
 
 ## 🔒 Security & Transport Model
 
-The Code Engine MCP Bridge implements a **Stateless Security Model** and supports the modern **Streamable HTTP** transport standard.
+### Two kinds of credential
 
-### **Authentication**
-All requests must be authenticated. Credentials are not stored on the server; they must be provided by the client in every request:
-- **Primary (Recommended)**: `Authorization: Bearer <IBMCLOUD_API_KEY>` header.
-- **Legacy**: `?apiKey=<key>` query parameter.
+- **IBM Cloud API key** (`IBMCLOUD_API_KEY`): how the server talks to IBM Cloud. It stays on the server process. Callers never receive it.
+- **MCP caller credentials**: who may call a tool on this server. They are never sent to IBM Cloud.
+  - the web admin session (`/admin`, built-in user `admin` with `ADMIN_PASSWORD`),
+  - a user, sent as `Authorization: Basic user:password` (`server_users`),
+  - an MCP API key, sent as `Authorization: Bearer cemcp_…` (`server_api_keys`; the secret is shown once).
 
-### **Transport Endpoints**
-| Protocol | Method | Endpoint | Description |
-| :--- | :--- | :--- | :--- |
-| **Streamable HTTP** | `POST` | `/sse` | Modern MCP transport. Returns the session endpoint. |
-| **Standard SSE** | `GET` | `/sse` | Legacy EventSource transport. |
-| **Messaging** | `POST` | `/message` | Send JSON-RPC messages (requires `sessionId` query param). |
+  Each credential has the scopes `read`, `write`, `admin`. Over stdio there are no headers; set `MCP_API_KEY`, or `MCP_USERNAME` and `MCP_PASSWORD`, in the server environment. Details: [Tool scope and authentication](docs/TOOL_ACCESS.md).
+
+### Transports
+
+| Mode | How to start | Endpoints |
+| :--- | :--- | :--- |
+| **stdio** (default) | the MCP client spawns `node build/index.js` | none; the client owns stdin and stdout |
+| **HTTP** | `MCP_MODE=http PORT=8787 HOST=127.0.0.1 node build/index.js` | `POST/GET/DELETE /mcp` (Streamable HTTP), `GET /sse` and `POST /messages` (legacy SSE), `/health`, `/admin`, `/test`, `/tools`, `/log`, `/docs` |
+
+**One server is better than several.** A stdio server is started by each client, so every IDE window gets its own process with its own memory. Its audit trace, rate limits, sessions and runtime settings are not visible to the web UI of another process. Run one HTTP server and point every client at it when you want the trace, logging, users, keys and settings to line up. The VS Code extension does exactly that by default.
+
+### Local server hardening
+
+- Bind to `127.0.0.1` unless the server is meant to be remote. On a public bind (`HOST=0.0.0.0`, a container) the built-in `admin` is disabled until `ADMIN_PASSWORD` is set.
+- `MCP_LOCAL_ONLY=true` makes the server answer only requests whose `Host` is `localhost`, `127.0.0.1` or `[::1]`, so a web page that rebinds its own name to `127.0.0.1` cannot reach it. The VS Code extension sets it for the server it starts. Leave it off behind a reverse proxy.
+- The admin cookie is `HttpOnly` and `SameSite=Strict`; five failed sign-ins lock an address out for ten minutes; the settings export leaves secrets out.
 
 ---
 
@@ -619,6 +634,9 @@ The same pattern works for any `npx`-runnable MCP server — just swap the `--st
 ## Documentation
 
 - [Setup Instructions](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/SETUP_INSTRUCTIONS.md)
+- [Tool reference (28 tools, every action)](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/TOOLS.md)
+- [Connect to a remote or shared server](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/REMOTE_MCP_CONNECTION.md)
+- [Tool scope and authentication](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/TOOL_ACCESS.md) — what read-only, write, and destructive mean, and when a call needs an admin sign-in
 - [MCP Inspector Troubleshooting](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/docs/MCP_INSPECTOR_TROUBLESHOOTING.md)
 - [VS Code MCP extension](https://github.com/markusvankempen/code-engine-mcp-server/blob/main/vscode-extension/README.md) — Activity Dashboard, Receipt Visualizer, setup & diagnostics
 - [IBM Code Engine API (IBM Cloud)](https://cloud.ibm.com/apidocs/codeengine/v2)
@@ -638,12 +656,15 @@ code-engine-mcp-server/
 │   ├── CODE_ENGINE_API_REFERENCE.md
 │   ├── MCP_INSPECTOR_TROUBLESHOOTING.md
 │   ├── SETUP_INSTRUCTIONS.md
+│   ├── TOOL_ACCESS.md
 │   ├── CODE_OF_CONDUCT.md
 │   ├── CONTRIBUTING.md
 │   └── MAINTAINERS.md
 ├── examples/
 │   ├── developer-splash/             # nginx static container example
 │   ├── starwars-splash/              # nginx Star Wars crawl example
+│   ├── startrek-splash/              # nginx Star Trek splash example
+│   ├── deploy-mcp-server-to-code-engine/  # Deploy this MCP server onto Code Engine
 │   └── mcp-server-supergateway/      # Host any MCP server on Code Engine via supergateway
 ├── dashboard/                        # MCP Activity Dashboard (dev repo) — npm run dashboard
 │   ├── index.html                    # Activity + Deployments UI
@@ -663,62 +684,33 @@ code-engine-mcp-server/
 
 ## 🧩 Features
 
-### Container Runtime Tools (Docker/Podman)
-- ✅ Detect container runtime (Docker/Podman)
-- ✅ Build container images (with platform targeting for amd64)
-- ✅ Push images to registries
-- ✅ Tag images with a new name/tag before pushing
-- ✅ List local images
-- ✅ Test containers locally
-- ✅ Get container logs
-- ✅ Stop and remove containers
-- ✅ List all containers
-- ✅ Inspect container image architecture, labels, and env
-- ✅ Prune unused/dangling images to reclaim disk space
-- ✅ Remove a local container image
-- ✅ Scaffold a Code Engine-compatible Dockerfile (`scaffold_dockerfile`)
+### Tools (28)
 
-### IBM Container Registry (ICR)
-- ✅ Log in to IBM Container Registry (`login_to_registry`)
-- ✅ List ICR namespaces
-- ✅ List images with optional namespace filter
-- ✅ Delete images by tag
-- ✅ Create ICR namespaces (`icr_create_namespace`)
+- **Local containers:** detect Docker or Podman, build, tag, push, run, inspect, clean up (`local_container`); check or create a Dockerfile (`dockerfile`)
+- **IBM Container Registry:** namespaces and images (`icr`)
+- **Code Engine:** projects (status, quotas, egress IPs), apps (create, update, wait, restart, roll back, sync `.env`, find idle apps), app diagnostics (instances, logs, events, revisions), jobs and job runs, builds and build runs, secrets (generic, registry, TLS, with in-place update and ICR pull-secret refresh), config maps, domain mappings, service bindings, functions, fleets
+- **Procedures:** `proc_build_push_deploy`, `proc_setup_custom_domain`, `proc_apply_manifest`
+- **Discovery:** `describe_server`, `list_schemas`, `get_schema`
+- **This server:** `server_settings`, `server_access`, `server_users`, `server_api_keys`, `server_log`
+- **Workspace:** `write_or_modify_file`
 
-### IBM Code Engine Tools
-- ✅ List, create, and delete projects
-- ✅ Deploy applications with image pull secrets
-- ✅ Update applications (image, scaling, env)
-- ✅ List applications and get public URLs
-- ✅ Get per-instance status (running, restarts, started-at)
-- ✅ Get application logs per instance
-- ✅ Build and job management (build configs, build runs, events, logs)
-- ✅ Validate Dockerfile for Code Engine compatibility (`ce_validate_dockerfile`)
-- ✅ Secrets and ConfigMaps (CRUD + update-in-place)
-- ✅ Custom domain mappings (create, list, get, update, delete)
-- ✅ Service bindings — connect IBM Cloud services to CE apps
-- ✅ TLS secrets from Let's Encrypt / certbot PEM files (`ce_create_tls_secret_from_pem`)
-- ✅ TLS cert renewal in-place without disrupting domain mappings (`ce_renew_tls_secret_from_pem`)
-- ✅ Update any secret in-place (`ce_update_secret`)
-- ✅ Refresh ICR pull secret with current API key credentials (`ce_refresh_icr_pull_secret`) — fixes `no_revision_ready` failures caused by stale registry credentials without needing the CLI
-- ✅ Restart app instances, roll back to a previous revision (`ce_restart_application`, `ce_rollback_application`)
-- ✅ Resubmit or cancel job runs (`ce_resubmit_job_run`, `ce_cancel_job_run`)
-- ✅ Kubernetes system events for apps, build runs, and job runs
-- ✅ Project resource quotas and public egress IPs
-- ✅ Sync env vars from a local `.env` file (`ce_sync_env_from_dotenv`)
-- ✅ Find idle / cost-incurring apps (`ce_find_idle_apps`)
-- ✅ Wait for app deployment to complete (`ce_wait_for_app_ready`)
-- ✅ IAM token info and diagnostics (`iam_get_token_info`)
+Every tool has an `outputSchema`, every result a `next` hint, and wrong calls explain what to fix. See [Available Tools](#️-available-tools) and the [tool reference](docs/TOOLS.md).
 
-### Procedures
-- ✅ `proc_build_push_deploy` — full container pipeline in one prompt (build → push → deploy → wait)
-- ✅ `proc_setup_custom_domain` — TLS cert + domain mapping in one step, returns CNAME target
-- ✅ `proc_apply_manifest` — apply a declarative JSON manifest (`ce-deploy.json`) to create/update all CE resources
+### Web admin UI and operations
 
-### Developer Experience (v1.4.0)
-- ✅ **MCP Activity Dashboard** — session timeline, idle-gap visualization, deploy outcome banner, Deployments inventory tab
-- ✅ **Live activity logging** — JSONL event stream with input summaries, pipeline sub-steps, and HTTP probe highlights
-- ✅ **VS Code extension commands** — Open MCP Activity Dashboard, Open Optional Receipt Visualizer
+- Sign in at `/admin`: **Overview**, **Remote client** (call any tool from a schema-driven form, switch the activity log and audit trace on, create users and MCP API keys, listen for events), **Activity**, **Events**, **Users**, **API keys**, **Runtime**
+- Tool scope and authentication per tool, rate limit, protocol switches, settings and log export (no secrets)
+
+### VS Code extension
+
+- Setup and diagnostics sidebar, **Configure MCP** for every IDE, **MCP Remote Config** panel, Activity Dashboard, Receipt Visualizer
+- Choice of *Shared HTTP server* (default) or *stdio*, or a remote server URL, with a check that the server is a code-engine MCP server
+- Details: [vscode-extension/README.md](vscode-extension/README.md)
+
+### Developer Experience
+
+- **MCP Activity Dashboard** — session timeline, idle-gap visualization, deploy outcome banner, Deployments inventory tab
+- **Live activity logging** — JSONL event stream with input summaries, pipeline sub-steps, and HTTP probe highlights
 
 ## ⚙️ Configuration
 
@@ -747,16 +739,20 @@ The [IBM Code Engine MCP extension](https://marketplace.visualstudio.com/items?i
 
 1. Open the **IBM Code Engine MCP** sidebar panel (cloud icon in the Activity Bar)
 2. Paste your IBM Cloud API key and click **Save**  
-   _(The key is stored in VS Code global settings — encrypted by the OS keychain, never in a plaintext file)_
+   _(The key is stored in VS Code SecretStorage, never in a plaintext file)_
 3. Optionally change the region (default: `us-south`) in the same panel
-4. Click **Configure MCP** — this writes the server entry to the global `mcp.json` and restarts VS Code's MCP server list
-5. Click **Run Diagnostics** to confirm everything is wired up:
+4. Under **Server connection → This computer** pick how the server runs:
+   - **Shared HTTP server** (default): the extension starts one server on `127.0.0.1:8787` and chat, the IDE MCP list, the web UI and **MCP Remote Config** all use it. Sign in to the web UI as `admin` / `admin` (change it with the setting `codeEngineMcp.localAdminPassword`).
+   - **stdio**: each IDE window starts its own process.
+   - or **Remote server**: the URL of a shared server on any host.
+5. Click **Configure MCP** — this writes the `code-engine` entry (the same connection the extension uses) into VS Code, Cursor, Bob, Windsurf, Cline, Antigravity, and Claude Desktop configs. Other servers in those files are kept.
+6. Click **Run Diagnostics** to confirm everything is wired up:
    - ✅ Node.js found on PATH
    - ✅ API key configured
    - ✅ MCP server registered
-   - ✅ Tool list discovered
+   - ✅ Tool list discovered (the heading shows the count, for example `Discovered Tools (28)`)
 
-After step 4 you can open GitHub Copilot Chat and immediately ask:
+After step 5 you can open GitHub Copilot Chat and immediately ask:
 > *"List all my Code Engine projects"*
 
 > **Tip:** If Copilot can't see the tools after installing, run **Command Palette → Reload Window** once.
@@ -926,39 +922,61 @@ Bob uses the same `cline.mcpServers` configuration format:
 
 ---
 
-### Path C — Remote Deployment (Stateless Proxy)
+### Path C — Shared HTTP server (local or remote)
 
-You can run the Code Engine MCP server as a **stateless proxy** on IBM Code Engine itself. In this mode, the server **does not store any credentials**. Instead, it extracts the `IBMCLOUD_API_KEY` from each incoming request.
+Run the server once in HTTP mode and let every client connect to it. The same steps work on your laptop and on IBM Code Engine, Render, Fly.io, a VM or any container host. The server is a plain Node HTTP app.
 
-#### 1. Security Model
-The server accepts credentials via:
-- **Authorization Header**: `Authorization: Bearer <your-ibm-cloud-api-key>`
-- **Query Parameter**: `?apiKey=<your-ibm-cloud-api-key>`
+#### 1. Start it
 
-#### 2. Client Configuration
-To connect to a remote instance (e.g., `https://ce-mcp-remote.../sse`), use [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) which handles the SSE-to-STDIO bridging and automatically forwards your local `IBMCLOUD_API_KEY` environment variable.
+```bash
+IBMCLOUD_API_KEY=<key> MCP_MODE=http PORT=8787 HOST=127.0.0.1 \
+ADMIN_PASSWORD=<choose one> npx -y code-engine-mcp-server
+```
 
-**`mcp.json` / `claude_desktop_config.json`:**
+On a public host use `HOST=0.0.0.0` and always set `ADMIN_PASSWORD` (the built-in `admin` is disabled without it). Put TLS in front of it.
+
+#### 2. Security model
+
+- The IBM Cloud API key lives on the server (environment variable, or stored with `server_settings` `secrets`). **Callers never send or receive it.**
+- Callers authenticate to the server with a user (`Authorization: Basic …`), an MCP API key (`Authorization: Bearer cemcp_…`) or the admin session cookie. Issue them in `/admin` or with `server_users` and `server_api_keys`.
+- Scopes `read`, `write`, `admin` and the auth mode (open, writes, all) decide what each caller may do: [docs/TOOL_ACCESS.md](docs/TOOL_ACCESS.md).
+
+#### 3. Client configuration
+
+**VS Code, Cursor, Windsurf and others that speak Streamable HTTP** (`mcp.json`):
+
 ```json
 {
-  "mcpServers": {
-    "remote-code-engine": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://your-remote-server.appdomain.cloud/sse"
-      ],
-      "env": {
-        "IBMCLOUD_API_KEY": "${env:IBMCLOUD_API_KEY}"
-      }
+  "servers": {
+    "code-engine": {
+      "type": "http",
+      "url": "https://your-server.example/mcp",
+      "headers": { "Authorization": "Bearer cemcp_…" }
     }
   }
 }
 ```
 
-#### 3. Diagnostic Page
-Remote deployments include a built-in diagnostic page at the root URL (e.g., `https://ce-mcp-remote.../`) providing real-time stats, tool counts, and connection health.
+Clients that only speak stdio can use [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
+
+```json
+{
+  "mcpServers": {
+    "code-engine-remote": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://your-server.example/mcp",
+               "--header", "Authorization: Bearer ${CODE_ENGINE_MCP_API_KEY}"],
+      "env": { "CODE_ENGINE_MCP_API_KEY": "cemcp_…" }
+    }
+  }
+}
+```
+
+The VS Code extension writes these entries for you (**Setup → Server connection**, then **Configure MCP**). See [docs/REMOTE_MCP_CONNECTION.md](docs/REMOTE_MCP_CONNECTION.md) for every IDE.
+
+#### 4. Check it
+
+`GET /health` answers without credentials (`?format=json` for scripts; the JSON names the service `code-engine-mcp-server`). Open `/admin` to see tool counts, the call log and settings.
 
 ---
 
@@ -1060,177 +1078,78 @@ Tell me what CNAME value to set in DNS.
 
 ## 🛠️ Available Tools
 
-89 tools total: 13 container tools + 5 ICR/registry tools + 66 Code Engine tools + 1 IAM tool + 3 procedures + 1 workspace tool.
+The server publishes **28 tools**. Resource tools (`ce_app`, `ce_job`, `ce_secret`, …) take an `action` field, so one tool covers list, get, create, update, delete and the other operations of that resource. The earlier 112 single-purpose tool names (`ce_list_applications`, `ce_create_job`, …) still work when called by name; they are just hidden from `tools/list` to keep the model's tool menu short.
 
-> **Procedures** bundle multiple tools into a single call. Use them for common end-to-end workflows.
+Call `describe_server` first when unsure, and `get_schema` with a tool name for the exact fields of each action. The full list of actions and their required fields is in the **[tool reference](docs/TOOLS.md)**.
 
-### Container Tools (13)
+```json
+{ "name": "ce_app", "arguments": { "action": "list", "project_id": "<project-id>" } }
+```
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `detect_container_runtime` | Detect Docker or Podman | — |
-| `list_local_images` | List local container images | `runtime` |
-| `list_local_containers` | List local containers | `runtime`, `all` |
-| `build_container_image` | Build a container image | `dockerfile_path`, `image_name`, `context_path` |
-| `push_container_image` | Push image to registry | `image_name`, `runtime` |
-| `tag_container_image` | Tag an image with a new name/tag before pushing | `source_image`, `target_image`, `runtime` |
-| `test_container_locally` | Run container for local testing | `image_name`, `port_mapping`, `env_vars` |
-| `get_container_logs` | Get logs from a running container | `container_id`, `runtime` |
-| `stop_local_container` | Stop and remove a container | `container_id`, `runtime` |
-| `inspect_container_image` | Inspect image architecture, labels, and env | `image_name`, `runtime` |
-| `prune_images` | Remove unused/dangling images to reclaim disk space | `runtime`, `all` |
-| `remove_local_image` | Remove a local container image | `image_name`, `runtime` |
-| `scaffold_dockerfile` | Generate a Code Engine-compatible Dockerfile for an app folder | `app_folder`, `app_type`, `port` |
+Regions used for project discovery: `us-south`, `us-east`, `eu-de`, `eu-gb`, `eu-es`, `jp-tok`, `jp-osa`, `au-syd`, `ca-tor`, `br-sao`.
 
-### IBM Container Registry Tools (5)
+> **Procedures** (`proc_*`) bundle several steps into one call, for example build, push, wait for the image and deploy.
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `login_to_registry` | Log in to IBM Container Registry so images can be pushed | `registry`, `username`, `password`, `runtime` |
-| `icr_list_namespaces` | List ICR namespaces in your account | `region` |
-| `icr_list_images` | List images in ICR (optionally filtered by namespace) | `namespace`, `region` |
-| `icr_delete_image` | Delete an image by full tag | `image`, `region` |
-| `icr_create_namespace` | Create a new ICR namespace | `namespace`, `region` |
+| Tool | Kind | What it is for |
+|---|---|---|
+| [`describe_server`](docs/TOOLS.md#describe_server) | read-only | Discovery tool: server version, IBM Cloud API key status, supported CE regions, and the published tool catalog |
+| [`list_schemas`](docs/TOOLS.md#list_schemas) | read-only | List every schema id: the data schemas (server, settings, log, error) and one per tool name |
+| [`get_schema`](docs/TOOLS.md#get_schema) | read-only | Get one schema from list_schemas |
+| [`local_container`](docs/TOOLS.md#local_container) | can delete or stop | Docker or Podman on this machine: detect the runtime, build, tag, push, run, inspect, and clean up images and containers |
+| [`dockerfile`](docs/TOOLS.md#dockerfile) | writes | Check or create a Dockerfile for Code Engine (linux/amd64, port 8080, non-root) |
+| [`icr`](docs/TOOLS.md#icr) | can delete or stop | IBM Container Registry: namespaces and the images in them |
+| [`ce_project`](docs/TOOLS.md#ce_project) | can delete or stop | Code Engine projects |
+| [`ce_app`](docs/TOOLS.md#ce_app) | can delete or stop | Code Engine applications (always-on or scale-to-zero HTTP services) |
+| [`ce_app_inspect`](docs/TOOLS.md#ce_app_inspect) | read-only | Read-only diagnostics for one Code Engine app: running instances, logs, Kubernetes events (why it will not start), and revisions (what to roll back to) |
+| [`ce_job`](docs/TOOLS.md#ce_job) | can delete or stop | Code Engine job definitions (batch work that runs to completion) |
+| [`ce_job_run`](docs/TOOLS.md#ce_job_run) | can delete or stop | Runs of Code Engine jobs |
+| [`ce_build`](docs/TOOLS.md#ce_build) | can delete or stop | Code Engine build configurations: build a container image in IBM Cloud from Git (no local Docker needed) |
+| [`ce_build_run`](docs/TOOLS.md#ce_build_run) | writes | Runs of Code Engine builds |
+| [`ce_secret`](docs/TOOLS.md#ce_secret) | can delete or stop | Code Engine secrets: generic key/value, registry pull credentials, TLS, SSH |
+| [`ce_config_map`](docs/TOOLS.md#ce_config_map) | can delete or stop | Code Engine config maps: non-secret key/value settings for apps and jobs |
+| [`ce_domain_mapping`](docs/TOOLS.md#ce_domain_mapping) | can delete or stop | Custom domains for Code Engine apps |
+| [`ce_binding`](docs/TOOLS.md#ce_binding) | can delete or stop | Service bindings: connect an IBM Cloud service instance (through its service_access secret) to a Code Engine app or job |
+| [`ce_function`](docs/TOOLS.md#ce_function) | can delete or stop | Code Engine serverless functions (code, not container images) |
+| [`ce_fleet`](docs/TOOLS.md#ce_fleet) | can delete or stop | Code Engine fleets: large pools of workers that process a queue of tasks |
+| [`proc_build_push_deploy`](docs/TOOLS.md#proc_build_push_deploy) | writes | PROCEDURE: Full container pipeline in one step — auto-detects Podman or Docker, builds for linux/amd64, pushes to IBM Container Registry (ICR), creates or updates a Code Engine application, waits for ready, and returns the public URL |
+| [`proc_setup_custom_domain`](docs/TOOLS.md#proc_setup_custom_domain) | writes | PROCEDURE: Custom domain setup in one step — reads TLS certificate PEM files from disk (e.g |
+| [`proc_apply_manifest`](docs/TOOLS.md#proc_apply_manifest) | writes | Apply a declarative JSON deployment manifest (ce-deploy.json) to Code Engine |
+| [`write_or_modify_file`](docs/TOOLS.md#write_or_modify_file) | writes | Write or update a text file in the workspace |
+| [`server_settings`](docs/TOOLS.md#server_settings) | writes | This MCP server's saved settings |
+| [`server_access`](docs/TOOLS.md#server_access) | writes | Who and what can reach this MCP server |
+| [`server_users`](docs/TOOLS.md#server_users) | can delete or stop | Admin |
+| [`server_api_keys`](docs/TOOLS.md#server_api_keys) | can delete or stop | Admin |
+| [`server_log`](docs/TOOLS.md#server_log) | writes | This MCP server's own call log and outbound event subscription |
 
-### Code Engine: Projects (7)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `ce_list_projects` | List all projects in a region | — |
-| `ce_get_project` | Get project details | `project_id` |
-| `ce_get_project_status` | Get project status (readiness, enabled components) | `project_id` |
-| `ce_get_project_quotas` | Get resource quotas: Used-vs-Limit for CPU, memory, apps, jobs | `project_id` |
-| `ce_list_egress_ips` | List public egress IPs used by a project | `project_id` |
-| `ce_create_project` | Create a new project | `name`, `resource_group_id` |
-| `ce_delete_project` | Delete a project | `project_id` |
-
-### Code Engine: Applications (14)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `ce_list_applications` | List applications in a project | `project_id` |
-| `ce_get_application` | Get application details and public URL | `project_id`, `app_name` |
-| `ce_create_application` | Deploy a new application | `project_id`, `name`, `image`, `image_secret`, `port`, `env_vars`, `run_args`, `run_commands` |
-| `ce_update_application` | Update image, scaling, env, pull secret, run args | `project_id`, `app_name`, `image`, `image_secret`, `scale_*`, `run_args`, `run_commands` |
-| `ce_rollback_application` | Roll back to a previous revision | `project_id`, `app_name`, `revision_name` |
-| `ce_restart_application` | Restart running instances of an app | `project_id`, `app_name` |
-| `ce_delete_application` | Delete an application | `project_id`, `app_name` |
-| `ce_list_app_instances` | List all running instances with status | `project_id`, `app_name` |
-| `ce_get_app_instance` | Get status details for a specific instance | `project_id`, `app_name`, `instance_name` |
-| `ce_list_app_revisions` | List all revisions (deployed versions) of an app | `project_id`, `app_name` |
-| `ce_get_app_revision` | Get details of a specific revision | `project_id`, `app_name`, `revision_name` |
-| `ce_get_app_logs` | Get logs for an app instance | `project_id`, `app_name`, `instance_name` |
-| `ce_get_app_events` | Get Kubernetes system events for an app | `project_id`, `app_name` |
-| `ce_wait_for_app_ready` | Poll until app status is ready or timeout; returns `poll_history` | `project_id`, `app_name`, `timeout_seconds` |
-
-### Code Engine: Builds (10)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `ce_list_builds` | List build configurations | `project_id` |
-| `ce_get_build` | Get build configuration details | `project_id`, `build_name` |
-| `ce_create_build` | Create a build configuration | `project_id`, `name`, `output_image`, `output_secret` |
-| `ce_delete_build` | Delete a build configuration | `project_id`, `build_name` |
-| `ce_list_build_runs` | List build runs | `project_id` |
-| `ce_get_build_run` | Get build run status | `project_id`, `build_run_name` |
-| `ce_get_build_run_events` | Get Kubernetes events for a build run | `project_id`, `build_run_name` |
-| `ce_get_build_run_logs` | Get the build output logs for a build run | `project_id`, `build_run_name` |
-| `ce_create_build_run` | Start a build run | `project_id`, `build_name` |
-| `ce_validate_dockerfile` | Validate a Dockerfile for Code Engine compatibility (architecture, port, nginx sed patterns, USER, CMD) | `dockerfile_path`, `context_path`, `expected_port` |
-
-### Code Engine: Jobs (11)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `ce_list_jobs` | List job definitions | `project_id` |
-| `ce_get_job` | Get job definition details | `project_id`, `job_name` |
-| `ce_create_job` | Create a job definition | `project_id`, `name`, `image` |
-| `ce_update_job` | Update an existing job definition | `project_id`, `job_name` |
-| `ce_delete_job` | Delete a job definition | `project_id`, `job_name` |
-| `ce_list_job_runs` | List job runs | `project_id`, `job_name` (optional) |
-| `ce_get_job_run` | Get job run status | `project_id`, `job_run_name` |
-| `ce_get_job_run_events` | Get Kubernetes events for a job run | `project_id`, `job_run_name` |
-| `ce_create_job_run` | Submit a job run | `project_id`, `job_name` |
-| `ce_cancel_job_run` | Cancel a running job run | `project_id`, `job_run_name` |
-| `ce_resubmit_job_run` | Resubmit an existing job run with the same config | `project_id`, `job_run_name` |
-
-### Code Engine: Secrets (8)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `ce_list_secrets` | List secrets (names + keys only) | `project_id` |
-| `ce_get_secret` | Get secret metadata (no values) | `project_id`, `secret_name` |
-| `ce_create_secret` | Create a secret | `project_id`, `name`, `format`, `data` |
-| `ce_update_secret` | Update an existing secret in-place (PATCH) | `project_id`, `secret_name`, `data` |
-| `ce_delete_secret` | Delete a secret | `project_id`, `secret_name` |
-| `ce_refresh_icr_pull_secret` | Delete and recreate an ICR registry pull secret using the server's own API key — fixes stale-credential failures without needing the CLI | `project_id`, `secret_name` (default: `icr-pull-secret`), `icr_host` |
-| `ce_create_tls_secret_from_pem` | Create a TLS secret from PEM files | `project_id`, `secret_name`, `cert_pem_path`, `key_pem_path` |
-| `ce_renew_tls_secret_from_pem` | Renew an existing TLS secret from updated PEM files | `project_id`, `secret_name`, `cert_pem_path`, `key_pem_path` |
-
-### Code Engine: ConfigMaps (5)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `ce_list_config_maps` | List configmaps | `project_id` |
-| `ce_get_config_map` | Get configmap details | `project_id`, `config_map_name` |
-| `ce_create_config_map` | Create a configmap | `project_id`, `name`, `data` |
-| `ce_update_config_map` | Update an existing configmap (PATCH) | `project_id`, `config_map_name`, `data` |
-| `ce_delete_config_map` | Delete a configmap | `project_id`, `config_map_name` |
-
-### Code Engine: Domain Mappings (5)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `ce_list_domain_mappings` | List all custom domain mappings | `project_id` |
-| `ce_get_domain_mapping` | Get status and CNAME target for a mapping | `project_id`, `domain_name` |
-| `ce_create_domain_mapping` | Map a custom domain to an app | `project_id`, `domain_name`, `app_name`, `tls_secret` |
-| `ce_update_domain_mapping` | Update an existing custom domain mapping | `project_id`, `domain_name` |
-| `ce_delete_domain_mapping` | Delete a custom domain mapping | `project_id`, `domain_name` |
-
-### Code Engine: Bindings (4)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `ce_list_bindings` | List all service bindings in a project | `project_id` |
-| `ce_get_binding` | Get details of a specific service binding | `project_id`, `binding_id` |
-| `ce_create_binding` | Create a service binding to an IBM Cloud service instance | `project_id`, `app_name`, `prefix`, `secret_name` |
-| `ce_delete_binding` | Delete a service binding | `project_id`, `binding_id` |
-
-### Code Engine: Utilities (2)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `ce_find_idle_apps` | Report apps with scale_min=0 that may be incurring cost | `project_id` |
-| `ce_sync_env_from_dotenv` | Read a local `.env` file and apply its key/value pairs to a CE app | `project_id`, `app_name`, `dotenv_path` |
-
-### IBM Cloud IAM (1)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `iam_get_token_info` | Inspect the current IAM token — account, expiry, validity | — |
-
-### Procedures — Multi-Step Workflows (3)
-
-| Tool | What it does | Key Parameters |
-|------|-------------|----------------|
-| `proc_build_push_deploy` | Build container for linux/amd64 → push → create/update CE app → wait for ready → return URL + `poll_history` | `context_path`, `project_id_or_name`, `app_name`, `image_secret`, `icr_namespace`, `image_tag` (default `latest`), `icr_host` (default `us.icr.io`), `port`, `timeout_seconds` |
-| `proc_setup_custom_domain` | Read PEM files → create TLS secret → create domain mapping → return CNAME target | `project_id_or_name`, `app_name`, `domain_name`, `tls_secret_name`, `cert_pem_path`, `key_pem_path` |
-| `proc_apply_manifest` | Apply a declarative JSON deployment manifest (`ce-deploy.json`) to Code Engine — creates or updates all resources | `manifest_path`, `project_id_or_name` |
-
-### Workspace Tools (1)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `write_or_modify_file` | Write or update a text file in the workspace | `path`, `content` |
+**Kind:** *read-only* tools only look; *writes* creates or changes something; *can delete or stop* means at least one action removes or stops something, so an assistant should confirm those.
 
 ## 🔐 Environment Variables
 
-- `IBMCLOUD_API_KEY`: IBM Cloud API key (required for Code Engine operations)
-- `IBMCLOUD_REGION`: Default IBM Cloud region (optional, defaults to us-south)
-- `CONTAINER_RUNTIME`: Force specific runtime (docker or podman)
-- `DEBUG`: Enable debug logging
+**IBM Cloud**
 
-> **Optional — Activity Dashboard (v1.4.0, off by default):** `MCP_ACTIVITY_*` variables log tool calls to JSONL for the live dashboard. See [MCP Activity Dashboard](#-mcp-activity-dashboard-v140) and [.env.example](.env.example).
+- `IBMCLOUD_API_KEY`: IBM Cloud API key (required for Code Engine and registry operations)
+- `IBMCLOUD_REGION`: default IBM Cloud region (optional, default `us-south`)
+- `CONTAINER_RUNTIME`: force `docker` or `podman`
+
+**HTTP mode and web UI**
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MCP_MODE` | stdio | set to `http` to serve `/mcp`, `/sse` and the web UI |
+| `PORT` | 8787 | listen port |
+| `HOST` | 127.0.0.1 | bind address; `0.0.0.0` makes it public |
+| `ADMIN_USER` | `admin` | built-in admin name |
+| `ADMIN_PASSWORD` | `admin` locally | admin password; required on a public bind |
+| `MCP_LOCAL_ONLY` | off | `true`: answer only requests addressed to `localhost`, `127.0.0.1`, `[::1]` |
+| `CORS_ORIGINS` | none | extra allowed CORS origins, comma separated |
+| `RATE_LIMIT_ENABLED`, `RATE_LIMIT`, `RATE_LIMIT_WINDOW_SECONDS` | on, 60, 60 | calls per caller per window |
+| `USER_STORE_PATH`, `TOOL_POLICY_PATH`, `DASHBOARD_CONFIG_PATH` | `~/.code-engine-mcp/…` | where users and keys, tool policy and settings are saved |
+
+**Caller identity over stdio**
+
+- `MCP_API_KEY`, or `MCP_USERNAME` and `MCP_PASSWORD`: the credential the stdio process acts as (stdio has no headers)
+
+> **Activity Dashboard (on by default since v1.6.0):** tool calls are logged to `~/.code-engine-mcp/activity/events.jsonl`; set `MCP_ACTIVITY_ENABLED=false` to turn it off. See [MCP Activity Dashboard](#-mcp-activity-dashboard-v140) and [.env.example](.env.example).
 
 > **Optional addon:** `PROVENANCE_*` variables enable signed receipts (off by default). See [Optional addon: Provenance](#optional-addon-provenance) at the end of this README.
 
@@ -1245,14 +1164,13 @@ Tell me what CNAME value to set in DNS.
 ## 👩‍💻 Development
 
 ```bash
+# Install, build, and test (mise loads Node from mise.toml)
+mise run install
+mise run test-all          # server unit tests, every tool smoke call, extension tests
+mise run test-extension    # extension typecheck + IDE config tests
+
 # Run in development mode
 npm run dev
-
-# Build
-npm run build
-
-# Test manually
-node build/index.js
 ```
 
 ## 🧪 Troubleshooting
@@ -1273,7 +1191,7 @@ node build/index.js
 ### Code Engine Commands Failing
 
 1. Verify your API key is set: check `IBMCLOUD_API_KEY` in your MCP client config
-2. Confirm the region is correct (default `us-south`); set `IBMCLOUD_REGION` if needed
+2. Confirm the region is correct (default `us-south`; `eu-es` is included). Set `IBMCLOUD_REGION` if needed
 3. Verify the project ID is valid: use `ce_list_projects` to find it
 4. Check for expired tokens — the server re-fetches IAM tokens automatically; if errors persist, regenerate your API key at [IBM Cloud IAM → API keys](https://cloud.ibm.com/iam/apikeys)
 
@@ -1302,23 +1220,17 @@ For issues and questions:
 
 ## Optional: MCP Activity Dashboard
 
-> **Core observability for MCP workflows.** Unlike provenance (signed receipts), activity logging is lightweight and off by default. Enable it when you want a live view of what the assistant is doing.
+> **Core observability for MCP workflows.** Unlike provenance (signed receipts), activity logging is lightweight and on by default (secrets redacted). Set `MCP_ACTIVITY_ENABLED=false` to turn it off.
 
 | Surface | Command / URL |
 |---------|---------------|
 | VS Code / Cursor extension | **IBM Code Engine MCP: Open MCP Activity Dashboard** |
 | Browser (dev repo) | `npm run dashboard` → http://localhost:8767/ |
-| Event log file | `dashboard/activity/live/events.jsonl` |
+| Event log file | `~/.code-engine-mcp/activity/events.jsonl` |
 
-**Minimal MCP env:**
+No env is required. The server creates the events file on the first tool call. Use `MCP_ACTIVITY_SESSION_ID` and `MCP_ACTIVITY_CHAT_LABEL` to label sessions in the dashboard dropdown.
 
-```json
-"MCP_ACTIVITY_ENABLED": "true"
-```
-
-The server creates the events file automatically. Use `MCP_ACTIVITY_SESSION_ID` and `MCP_ACTIVITY_CHAT_LABEL` to label sessions in the dashboard dropdown.
-
-**Troubleshooting:** If the dashboard shows no new sessions, confirm `MCP_ACTIVITY_ENABLED=true` in the MCP server env (not just chat context), restart the MCP server, and click **Show all activity** if you previously cleared the view.
+**Troubleshooting:** If the dashboard shows no new sessions, check that `MCP_ACTIVITY_ENABLED` is not `false` in the MCP server env and that `MCP_ACTIVITY_EVENTS_PATH` (if set) matches the file the dashboard reads. Restart the MCP server, and click **Show all activity** if you previously cleared the view.
 
 ---
 

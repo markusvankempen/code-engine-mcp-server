@@ -7,6 +7,130 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Documentation
+- **New [`docs/TOOLS.md`](docs/TOOLS.md)**: reference for the 28 published tools with every `action`, its required fields and a curl example (generated from the live `get_schema` output).
+- **README** brought up to v1.7.8: 28-tool catalog, shared HTTP server and transport guidance, web admin UI with the Remote client tab, MCP Remote Config, current security model (`MCP_LOCAL_ONLY`, default local `admin` / `admin`), Path C rewritten for the shared server, full list of environment variables.
+- **`docs/TOOL_ACCESS.md`** uses the bundle names (`server_users`, `server_api_keys`, `server_access`, `server_settings`, `server_log`) and lists which actions need the admin scope.
+- **`docs/MCP_INSPECTOR_TROUBLESHOOTING.md`** and **`docs/CLIENT_README.md`** point out the 28-tool list and the older names.
+
+## [1.7.8] - 2026-10-01
+
+### Fixed
+- **Admin page, Remote client: the Logging, Users & API keys and Events sub-tabs did nothing** and the page stayed on Test tools. The four sub-panels were missing the class the tab switcher looks for. A test now checks that every sub-tab has its panel and that exactly one starts open.
+
+## [1.7.7] - 2026-10-01
+
+### Changed
+- **VS Code: the local server uses `admin` / `admin` by default.** New setting `codeEngineMcp.localAdminPassword` (default `admin`). Set a longer value, or leave it empty to get the previous behaviour, a generated password kept in SecretStorage (*Copy admin password* in the sidebar). Changing it restarts the server the extension owns and offers to update the IDE config files, because they carry the login. The sidebar now says how to sign in.
+
+### Security
+- **`MCP_LOCAL_ONLY=true`** makes the HTTP server answer only requests whose `Host` is `localhost`, `127.0.0.1` or `[::1]` and refuse everything else with 403. The extension sets it for the server it starts, so a web page that rebinds its own name to `127.0.0.1` cannot reach a server that holds your IBM Cloud key, even with a well-known password. Off by default, so servers behind a reverse proxy are unaffected. Covered by `__tests__/local-only.test.ts`.
+
+## [1.7.6] - 2026-10-01
+
+### Fixed
+- **`ce_fleet` was rejected by VS Code chat** ("tool parameters array type must have items"). The `tasks` field of the fleet tool was an array with no `items`. It now declares object items. A new test walks every published input and output schema and fails if any array lacks `items`, because strict clients refuse the whole tool for one such field.
+
+## [1.7.5] - 2026-10-01
+
+### Added
+- **VS Code: choose how the local server runs, default one shared HTTP server.** New setting `codeEngineMcp.localTransport` (Setup → Server connection → This computer): *Shared HTTP server* (default) or *stdio*. In HTTP mode the extension starts one server on `127.0.0.1` (port `codeEngineMcp.localHttpPort`) with a generated admin login, reuses one that is already running, and restarts it when the IBM Cloud key, region or logging setting changes. If the window that owns it closes, another open window starts it again within 30 seconds. Chat, the IDE MCP list, the `/admin` web UI and MCP Remote Config all use that one process, so the audit trace, logging, users, keys and settings line up. stdio keeps one private process per IDE.
+- **Configure MCP follows the transport.** In HTTP mode it writes `{ type: "http", url: "http://127.0.0.1:<port>/mcp", headers: { Authorization } }` (or each IDE's equivalent) under the `code-engine` id, replacing a stdio entry in place and the other way round, so there is never a stdio copy next to an HTTP one. Changing the transport or port offers to update the files; the sidebar warns when `mcp.json` no longer matches.
+- **Diagnostics** lists the tools of the shared server itself in HTTP mode, and the *Discovered Tools* heading now shows how many were found, for example `Discovered Tools (28)`.
+
+### Changed
+- Activity logging for the shared server is controlled by the extension (`codeEngineMcp.activityEnabled`) and restarts the server it owns; the *Configure Activity Logging* command no longer edits `env` on an HTTP entry.
+
+## [1.7.4] - 2026-10-01
+
+### Fixed
+- **VS Code: *Configure MCP* wrote `npx code-engine-mcp-server@latest` into `mcp.json` even when the extension ran its bundled server**, so the IDE's MCP list and the extension could run different versions (for example 89 old tools in one, 28 in the other). It now writes the same command the extension runs: the bundled server, a newer cached npm build, or npx when *Install method* is `npx`. Run *Configure MCP* again after changing the install method or updating the extension (the bundled path contains the extension version).
+
+### Changed
+- **Admin page: the *Remote config client* tab is now *Remote client*.** It says what it is for (testing this server's MCP tools as an MCP client does) and now has the remote configuration the browser client had, in four sub-tabs: *Test tools*, *Logging* (activity log on/off, audit trace on/off and a trace view), *Users & API keys* (list/create/update/delete users, create/list/revoke MCP API keys, secret shown once) and *Events* (listen over Streamable HTTP or legacy SSE, send a test line). The Audit trace card moved from the Activity tab into *Logging*.
+- **VS Code: MCP Remote Config follows Setup → Server connection.** The address field is read-only and says whether it is *This computer* or *Remote server*. When you save a different connection (or change the remote URL, saved credential or local port) while the panel is open, the panel switches to it and reloads its tools instead of staying on the old one. The sidebar tab shows the same target and refreshes after saving Setup.
+
+## [1.7.3] - 2026-10-01
+
+### Added
+- **VS Code: check that the server is a code-engine MCP server.** The extension now asks the server what it is (the `service` on `/health`, the name in the MCP initialize reply, and whether it offers `describe_server`). If it is something else, Test connection and Diagnostics say so and name what it claims to be; saving the connection and *Configure MCP* are refused; chat does not register it (you get one warning); MCP Remote Config does not open on it, and if you type another URL into the panel it shows a red banner and blocks the forms until you choose *Use anyway*. The local HTTP server start also refuses a port that another program already answers on.
+
+## [1.7.2] - 2026-10-01
+
+### Fixed
+- **Remote config client stuck on "Loading tools…"** on the Admin page. Its script ran before the Audit trace card existed and stopped. It now waits for the page.
+- **Unstyled text inputs** (the Admin sign-in username, labels, MQTT fields). Inputs without `type="text"` now get the same style as the others.
+
+### Changed
+- The Admin page's *Tool console* tab is now called *Remote config client*.
+
+## [1.7.1] - 2026-10-01
+
+### Added
+- **HTTP dashboard: Remote config client and Audit trace on the Admin page.** The browser client's main features now live inside `/admin`: pick a tool, fill a schema-driven form (with a project picker), call it, and read the result, request and response, using the admin sign-in (no URL or key to enter). The Activity tab adds the audit trace toggle and the recent trace. Actions that change or delete resources ask for confirmation first.
+- **VS Code: MCP Remote Config.** A native panel (sidebar *Remote Config* tab, command *Open MCP Remote Config*) to run any tool, change logging, manage users and MCP API keys, and watch live events, in the VS Code theme. Requests go through the extension, which only reaches this machine and the saved remote server and adds the credential itself, so the page never sees it. The tab can also start and stop the bundled server in HTTP mode on `127.0.0.1` (setting `codeEngineMcp.localHttpPort`, default 8787) with a generated admin password, and open the web dashboard.
+- **Bundle sync check.** A test fails when the server bundled in the extension differs from the compiled build, when versions disagree, or when a needed package is missing from the bundle.
+
+## [1.7.0] - 2026-10-01
+
+### Added
+- **Host-neutral remote servers.** Test connection explains HTTP 404 (stopped or wrong path) and 502/503 (host up, server down); docs list other hosts (Render, Fly.io, a VM). Demo URLs with a personal subdomain were replaced by placeholders.
+- **VS Code sidebar: MCP server version.** Setup & Diagnostics shows the extension, local server, and newest npm versions, says whether an update exists (or whether the local build is newer than npm), and can pull the update.
+- **VS Code sidebar: remote server.** Choose *This computer* or *Remote server*. Enter a URL and an optional credential (kept in SecretStorage), test it (version, tool count, auth mode), and chat uses it. **Configure MCP** writes a `code-engine-remote` entry into each IDE. New settings `codeEngineMcp.serverMode` and `codeEngineMcp.remoteUrl`.
+- **Log page and settings.** Sortable log columns, CSV/JSON log export, and settings export/import (no secrets) on the HTTP dashboard.
+
+### Security
+- Standalone `npm run dashboard` server binds to 127.0.0.1, checks Host and Origin, requires JSON for actions, and no longer crashes on a malformed URL.
+- Activity log scrubs secrets from free text (Bearer tokens, JWTs, `key=value`, URL passwords, private keys); the log file is written `0600`.
+- Activity dashboard page escapes quotes, opens only `http(s)` links, and the extension webview runs under a nonce-only Content-Security-Policy.
+
+## [1.6.1] - 2025-12-01
+
+### Added
+- **`ce_update_build`** — new tool (and `ce_build` bundle `update` action) to PATCH an existing Code Engine build configuration.
+- **`openWorldHint` annotations** — every published tool now has a correct `openWorldHint` (`true` for IBM Cloud / external-network tools, `false` for local server-state tools). Fixed `annotationsFor()` in `tool-policy.ts` to read inferred annotations rather than always returning `true`.
+- **Deprecation warnings** — direct calls to legacy (unbundled) tool names now receive a deprecation hint in the response pointing to the equivalent bundle action.
+- **Browser-local timestamps** on the Log page (`<time data-ts>` elements, formatted client-side).
+- **`authMode` and `rateLimit` fields** on the `/health` JSON response and the health page stats.
+- **`mise run build`** now also syncs `build/index.js` and `build/index.js.map` to `vscode-extension/server/` automatically.
+
+### Changed
+- **Dashboard CSS** — aligned with the reference UI: `.page-tabs`/`.page-tab` replace `.tabs`/`.tab` on all pages; `.tbl-wrap` wraps every table; `.tag` replaces `.badge` for scope labels; `.eyebrow` + `h2.page-title` pattern used on every page heading; `.help-icon`/`.help-drawer` pattern for contextual help.
+- **`pageHeading()` helper** — `line2` parameter is now optional (defaults to `''`).
+- **Log page** — eyebrow heading, `.page-tabs`, `.tbl-wrap` on all three tables; stat containers use `.stat.ok`/`.stat.warn` classes.
+- **Help page** — eyebrow heading, `.page-tabs`, all tables wrapped in `.tbl-wrap`, `.badge` → `.tag` on scope labels.
+- **`MAX_PUBLIC_TOOLS`** reduced from 40 to 35.
+- **Admin login page** — password hint clarifies the default is disabled on public binds.
+- **Footer and About card** — removed email address to comply with IBM security policy.
+- **`curlBlock()`** — uses `data-copy` attribute so HTML entity encoding in the clipboard is not corrupted.
+- **`showPane()`** — handles both `.page-tab[data-target]` and legacy `.tab[data-pane]` patterns.
+- **`submitTry()`** — opens the result in a new browser tab.
+- **Log auto-refresh** — polls `/log?format=json` every 5 s and reloads the page if the event total increases.
+- **Health page** — `cwd` displayed as a full-width `.cwd-field` read-only input; new `authMode` and `rateLimit` stat tiles.
+
+### Fixed
+- `tool-policy.ts`: `annotationsFor()` was always setting `openWorldHint: true`; now delegates to `inferToolAnnotations()`.
+
+## [1.6.0] - 2026-09-25
+
+### Added
+- **Functions and fleets** — `ce_list_function_runtimes`, function CRUD, fleet lifecycle, `ce_add_fleet_tasks`, fleet tasks and workers. List tools accept an optional name and return that one item.
+- **`describe_server`** — reports version, API key presence, regions, and the published tool list.
+- **Region `eu-es`** in project discovery.
+- **Extension IDE configs** — Configure MCP writes the `code-engine` stdio entry for VS Code, Cursor, Bob, Windsurf, Cline, Antigravity, and Claude Desktop without removing other servers. Unparseable files are left unchanged.
+- **npm update check** in the extension (`codeEngineMcp.checkNpmUpdates`). Pulls a newer `code-engine-mcp-server` into extension storage when one is published.
+- **`mise run test-extension`** and IDE-config tests. `mise run test-all` includes them.
+
+### Changed
+- **Published tool list is 91** and tests fail if it reaches 99. Older get/renew names and some local image tools remain callable but are omitted from `tools/list`.
+- Successful tool results also carry `structuredContent`; errors return `ok: false` with a `next` hint.
+- **Activity logging is on by default** and writes to `~/.code-engine-mcp/activity/events.jsonl` (rotates at 5 MB). Set `MCP_ACTIVITY_ENABLED=false`, or turn off `codeEngineMcp.activityEnabled` in the extension. Redaction now covers env var values, secret payloads, TLS keys, and key-like fields in both inputs and results.
+- **Extension** — MCP Activity Dashboard command and sidebar view work. Resource tree shows errors, missing-key, and empty states instead of a blank view. Sidebar doc buttons open bundled docs (GitHub fallback).
+- **TLS renewal** is `ce_create_tls_secret_from_pem` with `mode: renew`. `ce_renew_tls_secret_from_pem` still works.
+- **Tool annotations** (`readOnlyHint`, `destructiveHint`, `openWorldHint`) on every published tool.
+- Restored `src/validators.ts` so a fresh clone builds.
+- READMEs, setup docs, the deploy skill, and example guides match the 1.6.0 tool list and the multi-IDE Configure MCP writer. `run-client.sh` loads `.env` from the repo root.
+
 ## [1.5.0] - 2026-07-04
 
 ### Added

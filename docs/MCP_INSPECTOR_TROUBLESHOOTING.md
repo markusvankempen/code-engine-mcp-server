@@ -86,14 +86,18 @@ Once variables are set, click **Connect**. The status indicator turns green and 
 1. Click the **Tools** tab.
 2. Click **List Tools**.
 
-You should see all ~62 tools grouped by category:
+You should see **28 tools**. Resource tools take an `action` field (`list`, `get`, `create`, `delete`, …); see the [tool reference](TOOLS.md).
 
-| Category prefix | Example tools |
-|-----------------|--------------|
-| `ce_` | `ce_list_projects`, `ce_create_application`, `ce_get_app_logs` |
-| `docker_` | `docker_build_image`, `docker_push_image` |
-| `icr_` | `icr_list_namespaces`, `icr_list_images` |
-| `proc_` | `proc_build_push_deploy`, `proc_build_run_and_deploy` |
+| Group | Tools |
+|-------|-------|
+| Discovery | `describe_server`, `list_schemas`, `get_schema` |
+| Containers and registry | `local_container`, `dockerfile`, `icr` |
+| Code Engine | `ce_project`, `ce_app`, `ce_app_inspect`, `ce_job`, `ce_job_run`, `ce_build`, `ce_build_run`, `ce_secret`, `ce_config_map`, `ce_domain_mapping`, `ce_binding`, `ce_function`, `ce_fleet` |
+| Procedures | `proc_build_push_deploy`, `proc_setup_custom_domain`, `proc_apply_manifest` |
+| This server | `server_settings`, `server_access`, `server_users`, `server_api_keys`, `server_log` |
+| Workspace | `write_or_modify_file` |
+
+> **Older tool names in the steps below.** The walkthrough and screenshots on this page were taken with the earlier single-purpose names (`ce_list_projects`, `ce_get_app_logs`, `ce_list_app_instances`, …). Those names still work when you type them into Inspector's call form, but they are no longer in the list. In the current list use `ce_project` with `action` = `list`, `ce_app_inspect` with `action` = `logs` or `instances`, and so on.
 
 If the list is empty or an error appears, check [Common errors](#common-errors) below.
 
@@ -119,7 +123,7 @@ Expected response shape:
   "projects": [
     {
       "id": "YOUR_CE_PROJECT_ID",
-      "name": "markus-app-v2-toronto",
+      "name": "my-project",
       "region": "ca-tor",
       "status": "active"
     }

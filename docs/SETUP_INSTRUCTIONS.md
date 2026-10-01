@@ -116,7 +116,7 @@ After installing:
 
 1. Open the **IBM Code Engine MCP** sidebar panel (cloud icon in the Activity Bar)
 2. Paste your IBM Cloud API key and click **Save**
-3. Click **Configure MCP** — writes the server entry to the global `mcp.json`
+3. Click **Configure MCP** — writes the `code-engine` entry for VS Code, Cursor, Bob, Windsurf, Cline, Antigravity, and Claude Desktop. Other servers in those files are kept. A file that does not parse is left unchanged.
 4. Click **Run Diagnostics** to confirm Node.js, the API key, and tool discovery are all ✅
 
 > The extension stores the key in VS Code global settings — encrypted by the OS keychain, never in a plaintext file.
@@ -240,6 +240,24 @@ Cursor also supports the Open VSX extension: [markusvankempen.code-engine-mcp](h
 
 ---
 
+### 6. Bob, Windsurf, and Antigravity
+
+**Configure MCP** in the VS Code extension writes the same `npx -y code-engine-mcp-server@latest` entry (with `IBMCLOUD_API_KEY` and `IBMCLOUD_REGION`) into these files. Other servers already in a file are kept. A file that does not parse is left unchanged.
+
+| Client | File | Top-level key |
+|---|---|---|
+| Bob (global) | `~/.bob/settings/mcp.json` | `mcpServers` |
+| Bob (workspace) | `.bob/mcp.json` | `mcpServers` |
+| Windsurf (workspace) | `.windsurf/mcp.json` | `mcpServers` |
+| Antigravity (global) | `~/.gemini/config/mcp_config.json` | `mcpServers` |
+| Antigravity (workspace) | `.agents/mcp_config.json` | `mcpServers` |
+
+Bob entries also set `disabled: false` and `alwaysAllow` for `describe_server`, `ce_list_projects`, and `ce_list_applications`.
+
+Manual Bob / Windsurf / Antigravity config uses the same shape as Cursor (`mcpServers`, no `type` field). Antigravity details for the optional remote server are in [REMOTE_MCP_CONNECTION.md](REMOTE_MCP_CONNECTION.md).
+
+---
+
 ## 🚀 Step 4: Verify the connection
 
 Once configured, restart your IDE or reload the MCP server and test with:
@@ -259,14 +277,14 @@ You don't need to know Docker or Code Engine commands. State your goal and the A
 **User:** *"I have an app in the `developer-splash` folder. Deploy it to my Code Engine project."*
 
 **Assistant's thought process:**
-1. *Discovery:* "Let me check what projects and namespaces exist… Found project `markus-app-v2-toronto` and namespace `mvk-code-engine`."
+1. *Discovery:* "Let me check what projects and namespaces exist… Found project `my-project` and namespace `my-namespace`."
 2. *Prerequisites:* "No pull secret in this project yet. I'll create `icr-pull-secret` using the current API key."
 3. *Execution:* "Running the full pipeline: build → push → deploy → wait."
 4. *Validation:* "Stuck at 'deploying'. Checking logs… readiness probe failing."
 5. *Self-correction:* "The `sed` pattern in the Dockerfile used `\s*` which Alpine BusyBox doesn't support. Fixing to `[[:space:]]*` and rebuilding."
 6. *Completion:* "App is live! Status: ready."
 
-**Response to user:** *"Your app is deployed at `https://developer-splash.29m5mrru3s3n.ca-tor.codeengine.appdomain.cloud`. I fixed a minor port config issue in the Dockerfile along the way."*
+**Response to user:** *"Your app is deployed at `https://developer-splash.<subdomain>.<region>.codeengine.appdomain.cloud`. I fixed a minor port config issue in the Dockerfile along the way."*
 
 ---
 
@@ -307,15 +325,9 @@ See [MCP Inspector Troubleshooting](https://github.com/markusvankempen/code-engi
 
 ### Activity Dashboard shows no sessions
 
-The dashboard reads `dashboard/activity/live/events.jsonl`, which is only written when the MCP server starts with activity logging enabled.
+Logging is on by default, and the dashboard reads `~/.code-engine-mcp/activity/events.jsonl`.
 
-1. Add to MCP server env and restart the server:
-
-```json
-"MCP_ACTIVITY_ENABLED": "true",
-"MCP_ACTIVITY_EVENTS_PATH": "/absolute/path/to/code-engine-mcp-server/dashboard/activity/live/events.jsonl"
-```
-
+1. Make sure the MCP server env does not set `MCP_ACTIVITY_ENABLED=false`, and that any `MCP_ACTIVITY_EVENTS_PATH` points at the file the dashboard reads. Restart the server after changing env.
 2. Open the dashboard: extension → **Open MCP Activity Dashboard**, or `npm run dashboard` → http://localhost:8767/
 3. If you cleared the view, click **Show all activity** to restore older sessions.
 

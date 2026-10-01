@@ -1,15 +1,19 @@
-# Connect to the IBM Code Engine MCP Servers
+# Connect to the IBM Code Engine MCP Server
 
-Two MCP server options are available:
+The server sits between callers and IBM Cloud.
 
-| | `code-engine` (local) | `code-engine-remote` (remote) |
+| | On this machine | Shared HTTP server |
 |---|---|---|
-| **Transport** | stdio | SSE |
-| **Runs** | On your machine via `npx` | On IBM Cloud Code Engine (ca-tor) |
-| **Auth** | `IBMCLOUD_API_KEY` env var | `Authorization` request header |
-| **Best for** | Development / local use | Shared teams, CI, remote IDEs |
+| **Transport** | stdio, started by the IDE | `POST /mcp` (Streamable HTTP) or `/sse` |
+| **IBM Cloud key** | `IBMCLOUD_API_KEY` on that process | Stored once on the server (`server_settings` action `secrets`, or the admin page). Callers never receive it. |
+| **Who may call tools** | The IDE process. No separate login. | A user (`Authorization: Basic` username and password) or an MCP API key this server issued (`Authorization: Bearer cemcp_...`) |
+| **Best for** | One person, one laptop | Several programs, CI, or another IDE talking to one server |
 
-Get an IBM Cloud API key at [cloud.ibm.com/iam/apikeys](https://cloud.ibm.com/iam/apikeys).
+Get an IBM Cloud API key at [cloud.ibm.com/iam/apikeys](https://cloud.ibm.com/iam/apikeys). On a shared server, create users with `server_users` and MCP API keys with `server_api_keys`. Those credentials are not IBM Cloud keys. Scope `read`, `write`, or `admin` on the user or key limits the tools. The server still calls Code Engine with its own IBM Cloud key.
+
+The VS Code extension can use either one. In the sidebar (**Setup & Diagnostics → Server connection**) pick **This computer** or **Remote server**. For a remote server enter the URL (`https://your-server.example/mcp`) and, if the server asks for one, a user password (`user:password`) or an MCP API key (`cemcp_...`). **Test connection** shows the server's version, tool count, and whether it is older than the newest release on npm. **Configure MCP** then writes a `code-engine-remote` entry (not the IBM Cloud key) into each IDE's config and leaves the local `code-engine` entry alone. The credential is stored in VS Code SecretStorage, and the extension refuses to send it over plain `http://` to another machine.
+
+**Any host works.** The server is a plain HTTP app (`MCP_MODE=http`, listens on `PORT`), so you can run it on IBM Code Engine, Render, Fly.io, Railway, a VM, or a container on your own network. Give the extension the public `https://` address of that host with the path `/mcp`. Nothing in the extension is tied to one provider. If **Test connection** says HTTP 404, the app is stopped or deleted or the path is wrong; HTTP 502/503 means the host is up but the server behind it is not.
 
 ---
 
@@ -30,25 +34,31 @@ Antigravity uses `"mcpServers"` as the top-level key and supports `${env:VAR}` s
       }
     },
     "code-engine-remote": {
-      "type": "sse",
-      "serverUrl": "https://ce-mcp-remote.29m5mrru3s3n.ca-tor.codeengine.appdomain.cloud/sse",
+      "type": "http",
+      "serverUrl": "https://your-server.example/mcp",
       "headers": {
-        "Authorization": "${env:IBMCLOUD_API_KEY}"
+        "Authorization": "Bearer ${env:CODE_ENGINE_MCP_API_KEY}"
       }
     }
   }
 }
 ```
 
-Set your API key in your shell before launching the IDE:
+For the local process, set the IBM Cloud key in your shell before launching the IDE:
 
 ```bash
-export IBMCLOUD_API_KEY="your-api-key-here"
+export IBMCLOUD_API_KEY="your-ibm-cloud-api-key"
 ```
 
-Or add it to your `~/.zshrc` / `~/.bashrc` so it is always available.
+For a shared server, set the MCP API key that server issued (or send Basic auth). Do not put the IBM Cloud key in the client:
 
-> **Note:** `IBMCLOUD_REGION` controls which region the **local** server targets by default (e.g. `us-south`, `ca-tor`, `eu-de`). The remote server always runs in `ca-tor` but can manage resources in any region.
+```bash
+export CODE_ENGINE_MCP_API_KEY="cemcp_..."
+```
+
+> **Note:** `IBMCLOUD_REGION` is the default region of the server process. A shared server uses the region saved with its IBM Cloud key. Callers do not choose that key.
+>
+> The VS Code extension **Configure MCP** writes the local entry to `~/.gemini/config/mcp_config.json` and, in the open workspace, `.agents/mcp_config.json`. In remote mode it writes the `code-engine-remote` entry shown above instead.
 
 ---
 
@@ -69,10 +79,10 @@ VS Code uses `"servers"` (not `"mcpServers"`) as the top-level key. Open it via 
       }
     },
     "code-engine-remote": {
-      "type": "sse",
-      "url": "https://ce-mcp-remote.29m5mrru3s3n.ca-tor.codeengine.appdomain.cloud/sse",
+      "type": "http",
+      "url": "https://your-server.example/mcp",
       "headers": {
-        "Authorization": "YOUR_IBMCLOUD_API_KEY"
+        "Authorization": "Bearer cemcp_..."
       }
     }
   }
@@ -95,12 +105,9 @@ VS Code uses `"servers"` (not `"mcpServers"`) as the top-level key. Open it via 
       }
     },
     "code-engine-remote": {
-      "transport": {
-        "type": "sse",
-        "url": "https://ce-mcp-remote.29m5mrru3s3n.ca-tor.codeengine.appdomain.cloud/sse",
-        "headers": {
-          "Authorization": "YOUR_IBMCLOUD_API_KEY"
-        }
+      "url": "https://your-server.example/mcp",
+      "headers": {
+        "Authorization": "Basic BASE64_USER_PASSWORD"
       }
     }
   }
@@ -111,7 +118,6 @@ VS Code uses `"servers"` (not `"mcpServers"`) as the top-level key. Open it via 
 
 ## Notes
 
-- The **local** server (`code-engine`) requires Node.js 18+ and internet access to IBM Cloud APIs.
-- The **remote** server (`code-engine-remote`) is stateless — the API key is passed per-connection via the `Authorization` header; no server-side env var is stored.
-- The remote server scales to zero when idle — the first request may take a few seconds to wake up.
-- Both servers expose the same IBM Code Engine MCP tools: deploy apps, manage builds, list projects, ICR operations, and more.
+- The local server requires Node.js 18+ and internet access to IBM Cloud APIs.
+- A shared server stores the IBM Cloud key. Each program sends its own user password or an MCP API key issued by that server. `Basic` is `base64(username:password)` from `server_users`. `Bearer` is the secret from `server_api_keys` action `issue`.
+- Both paths expose the same Code Engine tools. The caller's scope decides which of those tools run.
